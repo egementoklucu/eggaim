@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eggaim</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Hareketli Yumurta Logosu */
+        #egg-logo {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 60px;
+            z-index: 9999;
+            pointer-events: none;
+            animation: eggBounce 1.5s infinite alternate ease-in-out;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes eggBounce {
+            0% { transform: translateY(0) rotate(-10deg); }
+            100% { transform: translateY(-20px) rotate(15deg); }
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.8);
+        }
+        
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* YENİ SİLAH VE EFEKT TASARIMI */
+        #weapon-container {
+            position: absolute;
+            bottom: -40px;
+            right: -2%;
+            width: 450px;
+            height: 350px;
+            pointer-events: none;
+            transition: transform 0.05s ease-out;
+            z-index: 50;
+        }
+
+        #weapon-container.recoil {
+            transform: translateY(15px) translateX(8px) rotateZ(3deg);
+        }
+
+        #muzzle-flash {
+            position: absolute;
+            top: 29%;
+            left: 14%;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, rgba(255,180,0,1) 0%, rgba(255,50,0,0.8) 30%, rgba(0,0,0,0) 70%);
+            opacity: 0;
+            border-radius: 50%;
+            transition: opacity 0.05s;
+            mix-blend-mode: screen;
+            transform: translate(-50%, -50%);
+            z-index: 51;
+        }
+
+        #muzzle-flash.show {
+            opacity: 1;
+        }
+
+        .hud-stats {
+            position: absolute;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* ŞARJÖR YAZISI SİLAHIN ÜSTÜNE ALINDI VE Z-INDEX EKLENDİ */
+        #ammo-display { 
+            bottom: 300px; 
+            right: 120px; 
+            z-index: 100;
+        }
+        
+        #score-display { top: 20px; left: 20px; }
+        #timer-display { top: 20px; left: 50%; transform: translateX(-50%); } 
+        #top-right-stats { top: 100px; right: 20px; text-align: right; color: #00ffcc;} 
+        
+        #tutorial-text {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .menu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        h1 { font-size: 56px; margin-bottom: 10px; color: #00ffcc; text-shadow: 0 0 15px #00ffcc; letter-spacing: 2px;}
+        p { font-size: 20px; margin-bottom: 20px; }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #222;
+            color: white;
+            border: 2px solid #00ffcc;
+            border-radius: 5px;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+        button:hover { background-color: #00ffcc; color: #000; box-shadow: 0 0 15px #00ffcc; }
+        button.active { background-color: #00ffcc; color: #000; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .stats-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .stats-box p { font-size: 28px; margin: 10px 0; color: white; }
+        .highlight { color: #00ffcc; font-weight: bold; }
+        
+        #shop-menu .buy-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 300px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 20px;
+        }
+        input[type=range] {
+            width: 200px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="egg-logo">🥚</div>
+
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <div id="crosshair"></div>
+        
+        <div id="weapon-container">
+            <div id="muzzle-flash"></div>
+            <svg viewBox="0 0 1000 800" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="barrelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#666"/>
+                        <stop offset="30%" stop-color="#333"/>
+                        <stop offset="70%" stop-color="#111"/>
+                        <stop offset="100%" stop-color="#000"/>
+                    </linearGradient>
+                    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#444"/>
+                        <stop offset="20%" stop-color="#222"/>
+                        <stop offset="80%" stop-color="#111"/>
+                        <stop offset="100%" stop-color="#000"/>
+                    </linearGradient>
+                </defs>
+
+                <g transform="rotate(25, 500, 400)">
+                    <path d="M 100 370 L 300 370 L 300 430 L 100 430 Z" fill="url(#barrelGrad)" />
+                    <ellipse cx="100" cy="400" rx="15" ry="30" fill="#111" />
+                    <ellipse cx="100" cy="400" rx="6" ry="12" fill="#000" /> 
+
+                    <path d="M 300 360 L 550 360 L 550 440 L 300 430 Z" fill="url(#bodyGrad)" />
+                    
+                    <rect x="330" y="390" width="40" height="15" rx="5" fill="#000" />
+                    <rect x="390" y="390" width="40" height="15" rx="5" fill="#000" />
+                    <rect x="450" y="390" width="40" height="15" rx="5" fill="#000" />
+                    <rect x="330" y="415" width="40" height="10" rx="3" fill="#000" />
+                    <rect x="390" y="415" width="40" height="10" rx="3" fill="#000" />
+
+                    <path d="M 360 435 L 420 440 L 400 490 L 350 470 Z" fill="#111" />
+
+                    <path d="M 550 350 L 750 350 L 750 470 L 550 470 Z" fill="#1a1a1a" />
+                    <rect x="600" y="380" width="80" height="25" rx="4" fill="#050505" />
+                    <rect x="605" y="385" width="70" height="15" rx="2" fill="#222" />
+
+                    <path d="M 680 470 L 730 470 L 710 600 L 660 580 Z" fill="#0a0a0a" />
+
+                    <rect x="300" y="340" width="450" height="20" fill="#050505" />
+                    
+                    <path d="M 570 340 L 640 340 L 635 310 L 575 310 Z" fill="#111" />
+                    <path d="M 578 310 L 632 310 L 645 150 L 591 150 Z" fill="#1a1a1a" />
+                    <line x1="605" y1="160" x2="592" y2="300" stroke="#000" stroke-width="3" />
+                    <line x1="625" y1="160" x2="612" y2="300" stroke="#000" stroke-width="3" />
+
+                    <path d="M 320 340 L 330 280 L 360 280 L 370 340 Z" fill="#111" />
+                    <circle cx="345" cy="305" r="8" fill="#000" />
+
+                    <path d="M 680 340 L 690 270 L 730 270 L 740 340 Z" fill="#111" />
+                    <circle cx="710" cy="295" r="14" fill="#222" />
+                    <circle cx="710" cy="295" r="6" fill="#000" />
+
+                    <path d="M 750 360 L 950 380 L 950 520 L 750 470 Z" fill="url(#bodyGrad)" />
+                    <path d="M 930 380 L 950 380 L 950 520 L 930 520 Z" fill="#050505" />
+                </g>
+            </svg>
+        </div>
+
+        <div id="score-display" class="hud-stats">Puan: 0</div>
+        <div id="timer-display" class="hud-stats">Süre: 00:00</div>
+        <div id="top-right-stats" class="hud-stats">
+            Kasa: $<span id="hud-money">0</span> <br>
+            Yedek Mermi: <span id="hud-total-ammo">500</span>
+        </div>
+        <div id="ammo-display" class="hud-stats">Şarjör: 30 / 30</div>
+        <div id="tutorial-text">Hareket: W,A,S,D | Zıpla: Space | Ateş: Sol Tık Basılı Tut | Reload: R</div>
+    </div>
+
+    <div id="main-menu" class="menu">
+        <h1>Eggaim</h1>
+        
+        <div style="text-align: center; margin-bottom: 20px; color: #00ffcc; font-size: 22px;">
+            💰 Bakiye: $<span id="menu-money">0</span> | 🔫 Yedek Mermi: <span id="menu-total-ammo">500</span>
+        </div>
+
+        <div class="btn-group">
+            <button id="open-shop-btn">🛒 Marketi Aç</button>
+            <button id="open-settings-btn">⚙️ Ayarlar</button>
+        </div>
+
+        <p>1. Zorluk Seçin:</p>
+        <div class="btn-group" id="difficulty-group">
+            <button class="diff-btn" data-diff="kolay">Kolay</button>
+            <button class="diff-btn active" data-diff="orta">Orta</button>
+            <button class="diff-btn" data-diff="zor">Zor</button>
+        </div>
+
+        <p>2. Süre Seçin ve Başlayın:</p>
+        <div class="btn-group">
+            <button class="time-btn" data-time="10">10 Saniye</button>
+            <button class="time-btn" data-time="30">30 Saniye</button>
+            <button class="time-btn" data-time="60">1 Dakika</button>
+            <button class="time-btn" data-time="300">5 Dakika</button>
+        </div>
+    </div>
+
+    <div id="shop-menu" class="menu" style="display: none;">
+        <h1>Silah Marketi</h1>
+        <p style="color: #00ffcc;">Mevcut Paranız: $<span id="shop-money-display">0</span></p>
+        
+        <div class="buy-item"><span>10 Mermi</span> <button class="buy-btn" data-cost="5" data-amount="10">$5 Satın Al</button></div>
+        <div class="buy-item"><span>50 Mermi</span> <button class="buy-btn" data-cost="20" data-amount="50">$20 Satın Al</button></div>
+        <div class="buy-item"><span>100 Mermi</span> <button class="buy-btn" data-cost="40" data-amount="100">$40 Satın Al</button></div>
+        <div class="buy-item"><span>500 Mermi</span> <button class="buy-btn" data-cost="150" data-amount="500">$150 Satın Al</button></div>
+        
+        <button id="close-shop-btn" style="margin-top: 30px;">Ana Menüye Dön</button>
+    </div>
+
+    <div id="settings-menu" class="menu" style="display: none;">
+        <h1>Ayarlar</h1>
+        <div class="slider-container">
+            <label for="sens-slider">Aim Hızı (Sensitivity):</label>
+            <input type="range" id="sens-slider" min="0.1" max="3.0" step="0.1" value="1.0">
+            <span id="sens-value">1.0</span>
+        </div>
+        <button id="close-settings-btn" style="margin-top: 30px;">Ana Menüye Dön</button>
+    </div>
+
+    <div id="end-screen" class="menu" style="display: none;">
+        <h1>Süre Bitti!</h1>
+        <div class="stats-box">
+            <p>Toplam Puan: <span id="final-score" class="highlight">0</span></p>
+            <p>Saniyede Vurulan: <span id="final-avg" class="highlight">0.0</span></p>
+            <p>İsabet Oranı (Accuracy): <span id="final-acc" class="highlight">%0</span></p>
+            <hr style="border-color: #00ffcc; margin: 20px 0;">
+            <p style="font-size: 20px;">Ham Kazanılan: $<span id="final-base-earned">0</span></p>
+            <p style="font-size: 24px; margin-top: 10px;">İsabet Çarpanı Sonrası Net Kazanç: <span id="final-earned" class="highlight">$0</span></p>
+        </div>
+        <button id="restart-btn">Ana Menüye Dön</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playShootSound() {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+            
+            const weapon = document.getElementById('weapon-container');
+            const flash = document.getElementById('muzzle-flash');
+            weapon.classList.add('recoil');
+            flash.classList.add('show');
+            setTimeout(() => {
+                weapon.classList.remove('recoil');
+                flash.classList.remove('show');
+            }, 60);
+        }
+
+        function playHitSound() {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        let camera, scene, renderer, controls, raycaster;
+        const objects = []; 
+        const targets = []; 
+
+        let totalMoney = localStorage.getItem('eggappsMoney') ? parseInt(localStorage.getItem('eggappsMoney')) : 0;
+        let totalReserveAmmo = localStorage.getItem('eggappsAmmo') ? parseInt(localStorage.getItem('eggappsAmmo')) : 500;
+        let easyHitCount = localStorage.getItem('eggappsEasyHits') ? parseInt(localStorage.getItem('eggappsEasyHits')) : 0;
+        let mediumHitCount = localStorage.getItem('eggappsMediumHits') ? parseInt(localStorage.getItem('eggappsMediumHits')) : 0;
+        let savedSensitivity = localStorage.getItem('eggappsSensitivity') ? parseFloat(localStorage.getItem('eggappsSensitivity')) : 1.0;
+        let currentAmmo = localStorage.getItem('eggappsCurrentAmmo') !== null ? parseInt(localStorage.getItem('eggappsCurrentAmmo')) : 30;
+        const maxAmmo = 30;
+
+        function saveData() {
+            localStorage.setItem('eggappsMoney', totalMoney);
+            localStorage.setItem('eggappsAmmo', totalReserveAmmo);
+            localStorage.setItem('eggappsEasyHits', easyHitCount);
+            localStorage.setItem('eggappsMediumHits', mediumHitCount);
+            localStorage.setItem('eggappsSensitivity', savedSensitivity);
+            localStorage.setItem('eggappsCurrentAmmo', currentAmmo); 
+            updateAllUI();
+        }
+
+        let gameStatus = 'menu'; 
+        let selectedDifficulty = 'orta';
+        let selectedDuration = 0;
+        let timeRemaining = 0;
+        let timerInterval;
+        
+        let score = 0;
+        let isReloading = false;
+        
+        let totalShotsFired = 0;
+        let totalHits = 0;
+        let baseEarnedMoneyThisMatch = 0; 
+        
+        let isShooting = false;
+        let lastShotTime = 0;
+        const fireRateMs = 120; 
+
+        let lastSpawnTime = 0;
+
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false, isCrouching = false;
+        let prevTime = performance.now();
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        let speed = 400.0;
+        const defaultSpeed = 400.0, crouchSpeed = 200.0;
+        const playerHeight = 10, crouchHeight = 5, playerRadius = 4;
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+            scene.fog = new THREE.Fog(0x1a1a1a, 0, 750);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.y = playerHeight;
+
+            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+            light.position.set(0.5, 1, 0.75);
+            scene.add(light);
+
+            controls = new PointerLockControls(camera, document.body);
+            controls.pointerSpeed = savedSensitivity; 
+            raycaster = new THREE.Raycaster(); 
+
+            setupUIEvents();
+            updateAllUI(); 
+
+            scene.add(controls.getObject());
+
+            document.addEventListener('mousedown', (event) => {
+                initAudio(); 
+                if (event.button === 0 && controls.isLocked && gameStatus === 'playing') {
+                    isShooting = true;
+                }
+            });
+
+            document.addEventListener('mouseup', (event) => {
+                if (event.button === 0) {
+                    isShooting = false;
+                }
+            });
+
+            const onKeyDown = function (event) {
+                if(gameStatus !== 'playing') return;
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    case 'Space':
+                        if (canJump === true) velocity.y += 180;
+                        canJump = false;
+                        break;
+                    case 'ControlLeft': case 'ControlRight':
+                        isCrouching = true; speed = crouchSpeed; break;
+                    case 'KeyR':
+                        reloadWeapon(); 
+                        break;
+                }
+            };
+
+            const onKeyUp = function (event) {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                    case 'ControlLeft': case 'ControlRight':
+                        isCrouching = false; speed = defaultSpeed; break;
+                }
+            };
+
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+
+            const floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+            floorGeometry.rotateX(- Math.PI / 2);
+            const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            scene.add(floor);
+
+            const boxGeometry = new THREE.BoxGeometry(20, 20, 20);
+            const boxMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffcc });
+            for (let i = 0; i < 15; i++) {
+                const box = new THREE.Mesh(boxGeometry, boxMaterial);
+                box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
+                box.position.y = 10; 
+                box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
+                if (box.position.distanceTo(new THREE.Vector3(0, 10, 0)) > 40) {
+                    scene.add(box);
+                    objects.push(box);
+                }
+            }
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupUIEvents() {
+            const mainMenu = document.getElementById('main-menu');
+            const endScreen = document.getElementById('end-screen');
+            const uiLayer = document.getElementById('ui-layer');
+            const shopMenu = document.getElementById('shop-menu');
+            const settingsMenu = document.getElementById('settings-menu');
+
+            document.getElementById('open-shop-btn').addEventListener('click', () => {
+                initAudio();
+                mainMenu.style.display = 'none';
+                shopMenu.style.display = 'flex';
+                updateAllUI();
+            });
+            document.getElementById('close-shop-btn').addEventListener('click', () => {
+                shopMenu.style.display = 'none';
+                mainMenu.style.display = 'flex';
+            });
+            document.querySelectorAll('.buy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    let cost = parseInt(e.target.getAttribute('data-cost'));
+                    let amount = parseInt(e.target.getAttribute('data-amount'));
+                    if (totalMoney >= cost) {
+                        totalMoney -= cost;
+                        totalReserveAmmo += amount;
+                        saveData();
+                    } else {
+                        alert("Yetersiz Bakiye! Biraz daha antrenman yapıp para kazanmalısın.");
+                    }
+                });
+            });
+
+            const sensSlider = document.getElementById('sens-slider');
+            const sensValueText = document.getElementById('sens-value');
+            
+            sensSlider.value = savedSensitivity;
+            sensValueText.innerText = savedSensitivity.toFixed(1);
+
+            document.getElementById('open-settings-btn').addEventListener('click', () => {
+                initAudio();
+                mainMenu.style.display = 'none';
+                settingsMenu.style.display = 'flex';
+            });
+            
+            document.getElementById('close-settings-btn').addEventListener('click', () => {
+                settingsMenu.style.display = 'none';
+                mainMenu.style.display = 'flex';
+            });
+
+            sensSlider.addEventListener('input', (e) => {
+                savedSensitivity = parseFloat(e.target.value);
+                sensValueText.innerText = savedSensitivity.toFixed(1);
+                controls.pointerSpeed = savedSensitivity;
+                saveData();
+            });
+
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    selectedDifficulty = e.target.getAttribute('data-diff');
+                });
+            });
+
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    initAudio();
+                    selectedDuration = parseInt(e.target.getAttribute('data-time'));
+                    startGame();
+                });
+            });
+
+            document.getElementById('restart-btn').addEventListener('click', () => {
+                endScreen.style.display = 'none';
+                mainMenu.style.display = 'flex';
+                updateAllUI();
+            });
+
+            controls.addEventListener('lock', () => {
+                if(gameStatus === 'playing') {
+                    mainMenu.style.display = 'none';
+                    endScreen.style.display = 'none';
+                    shopMenu.style.display = 'none';
+                    settingsMenu.style.display = 'none';
+                    uiLayer.style.display = 'block';
+                    lastSpawnTime = performance.now(); 
+                }
+            });
+
+            controls.addEventListener('unlock', () => {
+                if (gameStatus === 'playing') {
+                    endGameEarly();
+                }
+            });
+        }
+
+        function updateAllUI() {
+            document.getElementById('hud-money').innerText = totalMoney;
+            document.getElementById('hud-total-ammo').innerText = totalReserveAmmo;
+            document.getElementById('menu-money').innerText = totalMoney;
+            document.getElementById('menu-total-ammo').innerText = totalReserveAmmo;
+            document.getElementById('shop-money-display').innerText = totalMoney;
+            document.getElementById('ammo-display').innerText = `Şarjör: ${currentAmmo} / ${maxAmmo}`;
+        }
+
+        function startGame() {
+            score = 0;
+            
+            // BUG FIX: Otomatik mermi yüklemeyi kaldırdık. 
+            // Oyuncu kaç mermisi varsa o şekilde başlar. (Eğer bittiyse 'R' tuşuyla manuel doldurmalı)
+            
+            isReloading = false;
+            isShooting = false;
+            totalShotsFired = 0;
+            totalHits = 0;
+            baseEarnedMoneyThisMatch = 0; 
+            timeRemaining = selectedDuration;
+            gameStatus = 'playing';
+
+            targets.forEach(t => scene.remove(t));
+            targets.length = 0;
+
+            updateAllUI();
+            document.getElementById('score-display').innerText = `Puan: 0`;
+            updateTimerUI();
+
+            controls.lock(); 
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(gameStatus === 'playing') {
+                    timeRemaining--;
+                    updateTimerUI();
+                    if(timeRemaining <= 0) finishGame(); 
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById('timer-display').innerText = `Süre: ${minutes < 10 ? '0':''}${minutes}:${seconds < 10 ? '0':''}${seconds}`;
+        }
+
+        function finishGame() {
+            gameStatus = 'ended';
+            isShooting = false;
+            clearInterval(timerInterval);
+            controls.unlock(); 
+
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'flex';
+
+            const totalTargetsHit = score / 10;
+            const elapsedTime = selectedDuration; 
+            const hitsPerSecond = (totalTargetsHit / elapsedTime).toFixed(1);
+            
+            let accuracy = 0;
+            let accuracyPercent = 0;
+            if (totalShotsFired > 0) {
+                accuracy = totalHits / totalShotsFired; 
+                accuracyPercent = Math.round(accuracy * 100); 
+            }
+
+            let finalEarnedMoney = Math.round(baseEarnedMoneyThisMatch * accuracy);
+            
+            totalMoney += finalEarnedMoney;
+            saveData(); 
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-avg').innerText = hitsPerSecond;
+            document.getElementById('final-acc').innerText = `%${accuracyPercent}`;
+            document.getElementById('final-base-earned').innerText = baseEarnedMoneyThisMatch;
+            document.getElementById('final-earned').innerText = `$${finalEarnedMoney}`;
+        }
+
+        function endGameEarly() {
+            gameStatus = 'menu';
+            isShooting = false;
+            clearInterval(timerInterval);
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+            saveData(); 
+            updateAllUI();
+        }
+
+        function reloadWeapon() {
+            if (isReloading || currentAmmo === maxAmmo || totalReserveAmmo <= 0) return; 
+            
+            isReloading = true;
+            document.getElementById('ammo-display').innerText = `Yenileniyor...`;
+            
+            setTimeout(() => {
+                let ammoNeeded = maxAmmo - currentAmmo;
+                let ammoToLoad = Math.min(ammoNeeded, totalReserveAmmo); 
+                
+                currentAmmo += ammoToLoad;
+                totalReserveAmmo -= ammoToLoad;
+                
+                isReloading = false;
+                saveData(); 
+            }, 1000); 
+        }
+
+        function performRaycastShoot() {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(targets);
+
+            if (intersects.length > 0) {
+                playHitSound(); 
+                
+                const hitTarget = intersects[0].object;
+                totalHits++; 
+                score += 10;
+                document.getElementById('score-display').innerText = `Puan: ${score}`;
+                
+                if (selectedDifficulty === 'kolay') {
+                    easyHitCount++;
+                    if (easyHitCount >= 10) {
+                        baseEarnedMoneyThisMatch += 1;
+                        easyHitCount -= 10; 
+                    }
+                } 
+                else if (selectedDifficulty === 'orta') {
+                    mediumHitCount++;
+                    if (mediumHitCount >= 3) {
+                        baseEarnedMoneyThisMatch += 1;
+                        mediumHitCount -= 3; 
+                    }
+                } 
+                else if (selectedDifficulty === 'zor') {
+                    baseEarnedMoneyThisMatch += 2;
+                }
+                
+                scene.remove(hitTarget);
+                const index = targets.indexOf(hitTarget);
+                if (index > -1) {
+                    targets.splice(index, 1);
+                }
+            }
+        }
+
+        function createTargetTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const maxRadius = Math.min(centerX, centerY);
+            const colors = ['#ff0000', '#ffffff', '#ff0000', '#ffffff', '#ff0000'];
+            const radii = [1.0, 0.8, 0.6, 0.4, 0.2];
+            for (let i = 0; i < colors.length; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, maxRadius * radii[i], 0, 2 * Math.PI);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const targetTexture = createTargetTexture();
+
+        function spawnTarget() {
+            const geometry = new THREE.CircleGeometry(5, 32); 
+            const material = new THREE.MeshBasicMaterial({ map: targetTexture, side: THREE.DoubleSide });
+            const target = new THREE.Mesh(geometry, material);
+
+            target.position.x = (Math.random() - 0.5) * 150; 
+            target.position.y = Math.random() * 25 + 10;
+            target.position.z = (Math.random() - 0.5) * 150;
+            
+            let speedMult = 1;
+            if (selectedDifficulty === 'kolay') speedMult = 0.5;
+            if (selectedDifficulty === 'orta') speedMult = 1.2;
+            if (selectedDifficulty === 'zor') speedMult = 5.0; 
+
+            target.userData.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 30 * speedMult, 
+                (Math.random() - 0.5) * 15 * speedMult, 
+                (Math.random() - 0.5) * 30 * speedMult  
+            );
+
+            scene.add(target);
+            targets.push(target);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function checkCollision() {
+            const playerBox = new THREE.Box3();
+            const currentHeight = isCrouching ? crouchHeight : playerHeight;
+            const center = new THREE.Vector3(camera.position.x, currentHeight / 2, camera.position.z);
+            const size = new THREE.Vector3(playerRadius * 2, currentHeight, playerRadius * 2);
+            playerBox.setFromCenterAndSize(center, size);
+
+            for (let i = 0; i < objects.length; i++) {
+                const objectBox = new THREE.Box3().setFromObject(objects[i]);
+                if (playerBox.intersectsBox(objectBox)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+
+            if (controls.isLocked === true && gameStatus === 'playing') {
+                const delta = (time - prevTime) / 1000;
+
+                if (isShooting && !isReloading && (time - lastShotTime > fireRateMs)) {
+                    if (currentAmmo > 0) {
+                        currentAmmo--;
+                        totalShotsFired++; 
+                        updateAllUI(); 
+                        playShootSound(); 
+                        performRaycastShoot(); 
+                        lastShotTime = time;
+                    }
+                }
+
+                if (time - lastSpawnTime > 1000) {
+                    spawnTarget();
+                    lastSpawnTime = time;
+                }
+
+                for (let i = 0; i < targets.length; i++) {
+                    const target = targets[i];
+                    target.position.add(target.userData.velocity.clone().multiplyScalar(delta));
+                    
+                    if (Math.abs(target.position.x) > 100 || Math.abs(target.position.z) > 100) {
+                        target.userData.velocity.x *= -1;
+                        target.userData.velocity.z *= -1;
+                    }
+                    if (target.position.y < 6) { 
+                        target.position.y = 6; target.userData.velocity.y *= -1; 
+                    } else if (target.position.y > 50) {
+                        target.position.y = 50; target.userData.velocity.y *= -1; 
+                    }
+                    target.lookAt(camera.position);
+                }
+
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= 9.8 * 40.0 * delta; 
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+
+                const oldPosition = camera.position.clone();
+
+                controls.moveRight(-velocity.x * delta);
+                if (checkCollision()) { camera.position.x = oldPosition.x; velocity.x = 0; }
+
+                controls.moveForward(-velocity.z * delta);
+                if (checkCollision()) { camera.position.z = oldPosition.z; velocity.z = 0; }
+
+                camera.position.y += velocity.y * delta;
+                const targetHeight = isCrouching ? crouchHeight : playerHeight;
+                
+                if (camera.position.y < targetHeight) {
+                    velocity.y = 0;
+                    camera.position.y = targetHeight;
+                    canJump = true;
+                }
+            }
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
