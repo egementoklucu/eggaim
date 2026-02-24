@@ -1,935 +1,1184 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eggaim</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
-            user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eggaim Multiplayer - FPS 1v1 & 2v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fff;font-family:'Rajdhani',sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{display:block}
+:root{--neon:#00ffcc;--neon-dim:#00cc99;--dark:#111;--darker:#0a0a0a}
 
-        #game-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+#egg-logo{position:fixed;top:18px;right:24px;z-index:9999;font-size:48px;pointer-events:none;animation:eggBounce 1.5s ease-in-out infinite;filter:drop-shadow(0 0 12px var(--neon))}
+@keyframes eggBounce{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-20px) rotate(10deg)}}
 
-        /* Hareketli Yumurta Logosu */
-        #egg-logo {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            font-size: 60px;
-            z-index: 9999;
-            pointer-events: none;
-            animation: eggBounce 1.5s infinite alternate ease-in-out;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-        }
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;background:radial-gradient(ellipse at center,#1a1a2e 0%,#0a0a0a 70%);transition:opacity .4s}
+.screen.hidden{display:none!important}
+.screen h1{font-family:'Orbitron',sans-serif;font-size:52px;color:var(--neon);text-shadow:0 0 30px var(--neon),0 0 60px var(--neon);margin-bottom:10px;letter-spacing:4px}
+.screen h2{font-family:'Orbitron',sans-serif;font-size:22px;color:#aaa;margin-bottom:40px;font-weight:400}
 
-        @keyframes eggBounce {
-            0% { transform: translateY(0) rotate(-10deg); }
-            100% { transform: translateY(-20px) rotate(15deg); }
-        }
+.neon-input{background:rgba(0,255,204,.05);border:2px solid var(--neon);color:#fff;padding:14px 28px;font-size:20px;border-radius:8px;outline:none;text-align:center;font-family:'Rajdhani',sans-serif;width:320px;margin-bottom:12px;transition:all .3s}
+.neon-input:focus{box-shadow:0 0 20px rgba(0,255,204,.3);background:rgba(0,255,204,.1)}
+.neon-btn{background:transparent;border:2px solid var(--neon);color:var(--neon);padding:16px 40px;font-size:20px;border-radius:8px;cursor:pointer;font-family:'Orbitron',sans-serif;font-weight:700;transition:all .3s;margin:8px;min-width:280px;text-transform:uppercase;letter-spacing:2px}
+.neon-btn:hover{background:var(--neon);color:#000;box-shadow:0 0 30px rgba(0,255,204,.5),inset 0 0 30px rgba(0,255,204,.1);transform:scale(1.05)}
+.neon-btn.danger{border-color:#ff4444;color:#ff4444}
+.neon-btn.danger:hover{background:#ff4444;color:#fff;box-shadow:0 0 30px rgba(255,68,68,.5)}
+.neon-btn.yellow{border-color:#ffdd00;color:#ffdd00;font-size:28px;padding:24px 60px}
+.neon-btn.yellow:hover{background:#ffdd00;color:#000;box-shadow:0 0 40px rgba(255,221,0,.6)}
+.neon-btn.orange{border-color:#ff8800;color:#ff8800}
+.neon-btn.orange:hover{background:#ff8800;color:#000;box-shadow:0 0 30px rgba(255,136,0,.5)}
+.error-msg{color:#ff4444;font-size:14px;margin-top:4px;min-height:20px}
+.info-text{color:#888;font-size:16px;margin-top:20px}
 
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: none;
-        }
+#lobby-screen .lobby-status{color:var(--neon);font-size:18px;margin-top:20px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 100;
-        }
-        
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background-color: white;
-            box-shadow: 0 0 2px rgba(0,0,0,0.8);
-        }
-        
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+#settings-panel{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center}
+#settings-panel.show{display:flex}
+#settings-panel .panel-box{background:#1a1a2e;border:2px solid var(--neon);border-radius:16px;padding:40px;min-width:400px;text-align:center}
+#settings-panel h2{font-family:'Orbitron';color:var(--neon);margin-bottom:30px}
+#settings-panel label{display:block;color:#ccc;margin:16px 0 8px;font-size:16px}
+#settings-panel input[type=range]{width:100%;accent-color:var(--neon)}
+.sens-val{color:var(--neon);font-family:'Orbitron';font-size:18px}
 
-        /* YENİ SİLAH VE EFEKT TASARIMI */
-        #weapon-container {
-            position: absolute;
-            bottom: -40px;
-            right: -2%;
-            width: 450px;
-            height: 350px;
-            pointer-events: none;
-            transition: transform 0.05s ease-out;
-            z-index: 50;
-        }
+/* Team display on ready screen */
+#team-display{display:flex;gap:40px;margin:20px 0 30px;text-align:center}
+.team-box{background:rgba(0,0,0,.4);border-radius:12px;padding:16px 28px;min-width:180px}
+.team-box.blue-box{border:2px solid #4488ff}
+.team-box.red-box{border:2px solid #ff4444}
+.team-box h3{font-family:'Orbitron';font-size:16px;margin-bottom:8px}
+.team-box.blue-box h3{color:#4488ff}
+.team-box.red-box h3{color:#ff4444}
+.team-box p{color:#ccc;font-size:15px;margin:2px 0}
+.team-box .me{color:var(--neon);font-weight:700}
 
-        #weapon-container.recoil {
-            transform: translateY(15px) translateX(8px) rotateZ(3deg);
-        }
+/* HUD */
+#game-hud{position:fixed;inset:0;z-index:500;pointer-events:none}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,.9)}
+#crosshair::before{width:2px;height:24px;left:11px;top:0}
+#crosshair::after{width:24px;height:2px;top:11px;left:0}
+#crosshair-dot{position:absolute;width:4px;height:4px;background:#fff;border-radius:50%;top:10px;left:10px}
 
-        #muzzle-flash {
-            position: absolute;
-            top: 29%;
-            left: 14%;
-            width: 140px;
-            height: 140px;
-            background: radial-gradient(circle, rgba(255,180,0,1) 0%, rgba(255,50,0,0.8) 30%, rgba(0,0,0,0) 70%);
-            opacity: 0;
-            border-radius: 50%;
-            transition: opacity 0.05s;
-            mix-blend-mode: screen;
-            transform: translate(-50%, -50%);
-            z-index: 51;
-        }
+#scoreboard{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:20px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px 28px;font-family:'Orbitron',sans-serif}
+#score-blue{color:#4488ff;font-size:32px;font-weight:900}
+#score-red{color:#ff4444;font-size:32px;font-weight:900}
+#score-vs{color:#555;font-size:18px}
+#blue-name,#red-name{font-size:12px;color:#aaa;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#timer-display{position:absolute;top:70px;left:50%;transform:translateX(-50%);font-family:'Orbitron';font-size:22px;color:#fff;background:rgba(0,0,0,.5);padding:4px 18px;border-radius:8px}
 
-        #muzzle-flash.show {
-            opacity: 1;
-        }
+#health-bar-container{position:absolute;bottom:30px;left:30px;display:flex;align-items:center;gap:12px}
+#health-icon{font-size:28px}
+#health-bar-bg{width:240px;height:20px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+#health-bar-fill{height:100%;background:linear-gradient(90deg,#00ff88,#00ffcc);border-radius:10px;transition:width .3s;width:100%}
+#health-text{font-family:'Orbitron';font-size:18px;color:var(--neon);min-width:40px}
 
-        .hud-stats {
-            position: absolute;
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
+#ammo-display{position:absolute;bottom:30px;right:30px;font-family:'Orbitron';font-size:24px;color:#fff;background:rgba(0,0,0,.5);padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.15)}
+#ammo-display .mag{color:var(--neon);font-size:30px}
+#ammo-display .reserve{color:#888;font-size:20px}
 
-        /* ŞARJÖR YAZISI SİLAHIN ÜSTÜNE ALINDI VE Z-INDEX EKLENDİ */
-        #ammo-display { 
-            bottom: 300px; 
-            right: 120px; 
-            z-index: 100;
-        }
-        
-        #score-display { top: 20px; left: 20px; }
-        #timer-display { top: 20px; left: 50%; transform: translateX(-50%); } 
-        #top-right-stats { top: 100px; right: 20px; text-align: right; color: #00ffcc;} 
-        
-        #tutorial-text {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.7);
-        }
+#mode-indicator{position:absolute;top:16px;left:16px;font-family:'Orbitron';font-size:14px;padding:4px 12px;border-radius:6px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15)}
 
-        .menu {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
+#headshot-notify{position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);font-family:'Orbitron';font-size:48px;color:#ff2222;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000;opacity:0;transition:opacity .15s;z-index:600;pointer-events:none}
+#headshot-notify.show{opacity:1}
 
-        h1 { font-size: 56px; margin-bottom: 10px; color: #00ffcc; text-shadow: 0 0 15px #00ffcc; letter-spacing: 2px;}
-        p { font-size: 20px; margin-bottom: 20px; }
-        
-        .btn-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
+#death-overlay{position:fixed;inset:0;z-index:700;background:rgba(180,0,0,.35);display:none;align-items:center;justify-content:center;flex-direction:column}
+#death-overlay.show{display:flex}
+#death-overlay h1{font-family:'Orbitron';font-size:64px;color:#ff2222;text-shadow:0 0 40px #ff0000;animation:deathPulse .8s ease-in-out infinite}
+@keyframes deathPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+#death-overlay p{color:#ffaaaa;font-size:22px;margin-top:10px}
 
-        button {
-            padding: 10px 25px;
-            font-size: 18px;
-            cursor: pointer;
-            background-color: #222;
-            color: white;
-            border: 2px solid #00ffcc;
-            border-radius: 5px;
-            transition: 0.2s;
-            font-weight: bold;
-        }
-        button:hover { background-color: #00ffcc; color: #000; box-shadow: 0 0 15px #00ffcc; }
-        button.active { background-color: #00ffcc; color: #000; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+#round-win-overlay{position:fixed;inset:0;z-index:700;background:rgba(0,80,40,.35);display:none;align-items:center;justify-content:center;flex-direction:column}
+#round-win-overlay.show{display:flex}
+#round-win-overlay h1{font-family:'Orbitron';font-size:64px;color:var(--neon);text-shadow:0 0 40px var(--neon)}
 
-        .stats-box {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 10px;
-            border: 1px solid #00ffcc;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        .stats-box p { font-size: 28px; margin: 10px 0; color: white; }
-        .highlight { color: #00ffcc; font-weight: bold; }
-        
-        #shop-menu .buy-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 300px;
-            margin: 10px 0;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 5px;
-        }
+#match-end-overlay{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;flex-direction:column}
+#match-end-overlay.show{display:flex}
+#match-end-overlay h1{font-family:'Orbitron';font-size:56px;color:var(--neon);text-shadow:0 0 40px var(--neon)}
+#match-end-overlay h2{font-family:'Orbitron';font-size:28px;color:#ccc;margin:20px 0 40px}
 
-        .slider-container {
-            margin: 20px 0;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            font-size: 20px;
-        }
-        input[type=range] {
-            width: 200px;
-            cursor: pointer;
-        }
-    </style>
+#pause-menu{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;flex-direction:column}
+#pause-menu.show{display:flex}
+#pause-menu h1{font-family:'Orbitron';font-size:36px;color:var(--neon);margin-bottom:30px}
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+#hitmarker{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;opacity:0;z-index:550;pointer-events:none;transition:opacity .1s}
+#hitmarker.show{opacity:1}
+#hitmarker svg line{stroke:#ff0000;stroke-width:2}
+
+#damage-flash{position:fixed;inset:0;z-index:450;background:radial-gradient(ellipse at center,transparent 40%,rgba(255,0,0,.3) 100%);pointer-events:none;opacity:0;transition:opacity .15s}
+#damage-flash.show{opacity:1}
+
+#muzzle-flash{position:fixed;bottom:18%;right:38%;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#ffff00 0%,#ff8800 40%,transparent 70%);pointer-events:none;opacity:0;z-index:510;transition:opacity .04s}
+#muzzle-flash.show{opacity:1}
+
+.searching-dots::after{content:'';animation:dots 1.5s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* MINIMAP (2v2 only) */
+#minimap{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:140px;height:140px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);border-radius:8px;display:none}
+#minimap canvas{width:100%;height:100%;border-radius:8px}
+
+/* TEAMMATE HUD (2v2 only) */
+#teammate-hud{position:absolute;bottom:70px;left:30px;display:none;gap:6px;flex-direction:column}
+.teammate-bar{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:6px;border:1px solid rgba(68,136,255,.3)}
+.teammate-bar .tm-name{font-size:12px;color:#88bbff;font-family:'Orbitron';min-width:60px}
+.teammate-bar .tm-hp-bg{width:100px;height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+.teammate-bar .tm-hp-fill{height:100%;background:#4488ff;border-radius:4px;transition:width .3s}
+.teammate-bar .tm-hp-text{font-size:11px;color:#88bbff;font-family:'Orbitron';min-width:28px;text-align:right}
+
+#kill-feed{position:absolute;top:100px;right:20px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.kill-feed-item{background:rgba(0,0,0,.7);padding:6px 14px;border-radius:6px;font-size:14px;color:#ccc;font-family:'Rajdhani';animation:feedFade 3s forwards;white-space:nowrap}
+@keyframes feedFade{0%{opacity:1;transform:translateX(0)}70%{opacity:1}100%{opacity:0;transform:translateX(20px)}}
+</style>
 </head>
 <body>
 
-    <div id="egg-logo">🥚</div>
+<div id="egg-logo">🥚</div>
 
-    <div id="game-container"></div>
+<!-- LOGIN -->
+<div class="screen" id="login-screen">
+  <h1>🥚 EGGAIM</h1>
+  <h2>MULTIPLAYER FPS — 1v1 & 2v2</h2>
+  <input type="text" class="neon-input" id="nickname-input" placeholder="Nickname gir..." maxlength="16" autocomplete="off">
+  <div class="error-msg" id="nick-error"></div>
+  <button class="neon-btn" id="login-btn" onclick="handleLogin()">GİRİŞ YAP</button>
+  <p class="info-text">Min 3 karakter • Sadece harf ve rakam</p>
+</div>
 
-    <div id="ui-layer">
-        <div id="crosshair"></div>
-        
-        <div id="weapon-container">
-            <div id="muzzle-flash"></div>
-            <svg viewBox="0 0 1000 800" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="barrelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#666"/>
-                        <stop offset="30%" stop-color="#333"/>
-                        <stop offset="70%" stop-color="#111"/>
-                        <stop offset="100%" stop-color="#000"/>
-                    </linearGradient>
-                    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#444"/>
-                        <stop offset="20%" stop-color="#222"/>
-                        <stop offset="80%" stop-color="#111"/>
-                        <stop offset="100%" stop-color="#000"/>
-                    </linearGradient>
-                </defs>
+<!-- LOBBY -->
+<div class="screen hidden" id="lobby-screen">
+  <h1>🥚 EGGAIM</h1>
+  <h2 id="lobby-welcome">Hoş geldin!</h2>
+  <button class="neon-btn" id="matchmake-btn-1v1" onclick="startMatchmaking('1v1')">⚔️ 1v1 RASTGELE GİR</button>
+  <button class="neon-btn orange" id="matchmake-btn-2v2" onclick="startMatchmaking('2v2')">👥 2v2 RASTGELE GİR</button>
+  <button class="neon-btn" onclick="openSettings()">🛠️ AYARLAR</button>
+  <div class="lobby-status" id="lobby-status"></div>
+</div>
 
-                <g transform="rotate(25, 500, 400)">
-                    <path d="M 100 370 L 300 370 L 300 430 L 100 430 Z" fill="url(#barrelGrad)" />
-                    <ellipse cx="100" cy="400" rx="15" ry="30" fill="#111" />
-                    <ellipse cx="100" cy="400" rx="6" ry="12" fill="#000" /> 
-
-                    <path d="M 300 360 L 550 360 L 550 440 L 300 430 Z" fill="url(#bodyGrad)" />
-                    
-                    <rect x="330" y="390" width="40" height="15" rx="5" fill="#000" />
-                    <rect x="390" y="390" width="40" height="15" rx="5" fill="#000" />
-                    <rect x="450" y="390" width="40" height="15" rx="5" fill="#000" />
-                    <rect x="330" y="415" width="40" height="10" rx="3" fill="#000" />
-                    <rect x="390" y="415" width="40" height="10" rx="3" fill="#000" />
-
-                    <path d="M 360 435 L 420 440 L 400 490 L 350 470 Z" fill="#111" />
-
-                    <path d="M 550 350 L 750 350 L 750 470 L 550 470 Z" fill="#1a1a1a" />
-                    <rect x="600" y="380" width="80" height="25" rx="4" fill="#050505" />
-                    <rect x="605" y="385" width="70" height="15" rx="2" fill="#222" />
-
-                    <path d="M 680 470 L 730 470 L 710 600 L 660 580 Z" fill="#0a0a0a" />
-
-                    <rect x="300" y="340" width="450" height="20" fill="#050505" />
-                    
-                    <path d="M 570 340 L 640 340 L 635 310 L 575 310 Z" fill="#111" />
-                    <path d="M 578 310 L 632 310 L 645 150 L 591 150 Z" fill="#1a1a1a" />
-                    <line x1="605" y1="160" x2="592" y2="300" stroke="#000" stroke-width="3" />
-                    <line x1="625" y1="160" x2="612" y2="300" stroke="#000" stroke-width="3" />
-
-                    <path d="M 320 340 L 330 280 L 360 280 L 370 340 Z" fill="#111" />
-                    <circle cx="345" cy="305" r="8" fill="#000" />
-
-                    <path d="M 680 340 L 690 270 L 730 270 L 740 340 Z" fill="#111" />
-                    <circle cx="710" cy="295" r="14" fill="#222" />
-                    <circle cx="710" cy="295" r="6" fill="#000" />
-
-                    <path d="M 750 360 L 950 380 L 950 520 L 750 470 Z" fill="url(#bodyGrad)" />
-                    <path d="M 930 380 L 950 380 L 950 520 L 930 520 Z" fill="#050505" />
-                </g>
-            </svg>
-        </div>
-
-        <div id="score-display" class="hud-stats">Puan: 0</div>
-        <div id="timer-display" class="hud-stats">Süre: 00:00</div>
-        <div id="top-right-stats" class="hud-stats">
-            Kasa: $<span id="hud-money">0</span> <br>
-            Yedek Mermi: <span id="hud-total-ammo">500</span>
-        </div>
-        <div id="ammo-display" class="hud-stats">Şarjör: 30 / 30</div>
-        <div id="tutorial-text">Hareket: W,A,S,D | Zıpla: Space | Ateş: Sol Tık Basılı Tut | Reload: R</div>
+<!-- READY -->
+<div class="screen hidden" id="ready-screen">
+  <h1 id="ready-title">RAKIP BULUNDU!</h1>
+  <h2 id="opponent-name-display">vs ???</h2>
+  <div id="team-display" style="display:none">
+    <div class="team-box blue-box">
+      <h3>🔵 MAVİ TAKIM</h3>
+      <div id="blue-team-list"></div>
     </div>
-
-    <div id="main-menu" class="menu">
-        <h1>Eggaim</h1>
-        
-        <div style="text-align: center; margin-bottom: 20px; color: #00ffcc; font-size: 22px;">
-            💰 Bakiye: $<span id="menu-money">0</span> | 🔫 Yedek Mermi: <span id="menu-total-ammo">500</span>
-        </div>
-
-        <div class="btn-group">
-            <button id="open-shop-btn">🛒 Marketi Aç</button>
-            <button id="open-settings-btn">⚙️ Ayarlar</button>
-        </div>
-
-        <p>1. Zorluk Seçin:</p>
-        <div class="btn-group" id="difficulty-group">
-            <button class="diff-btn" data-diff="kolay">Kolay</button>
-            <button class="diff-btn active" data-diff="orta">Orta</button>
-            <button class="diff-btn" data-diff="zor">Zor</button>
-        </div>
-
-        <p>2. Süre Seçin ve Başlayın:</p>
-        <div class="btn-group">
-            <button class="time-btn" data-time="10">10 Saniye</button>
-            <button class="time-btn" data-time="30">30 Saniye</button>
-            <button class="time-btn" data-time="60">1 Dakika</button>
-            <button class="time-btn" data-time="300">5 Dakika</button>
-        </div>
+    <div class="team-box red-box">
+      <h3>🔴 KIRMIZI TAKIM</h3>
+      <div id="red-team-list"></div>
     </div>
+  </div>
+  <button class="neon-btn yellow" onclick="enterBattle()">⚔️ SAVAŞA GİR</button>
+  <p class="info-text">Tıkla ve savaş!</p>
+</div>
 
-    <div id="shop-menu" class="menu" style="display: none;">
-        <h1>Silah Marketi</h1>
-        <p style="color: #00ffcc;">Mevcut Paranız: $<span id="shop-money-display">0</span></p>
-        
-        <div class="buy-item"><span>10 Mermi</span> <button class="buy-btn" data-cost="5" data-amount="10">$5 Satın Al</button></div>
-        <div class="buy-item"><span>50 Mermi</span> <button class="buy-btn" data-cost="20" data-amount="50">$20 Satın Al</button></div>
-        <div class="buy-item"><span>100 Mermi</span> <button class="buy-btn" data-cost="40" data-amount="100">$40 Satın Al</button></div>
-        <div class="buy-item"><span>500 Mermi</span> <button class="buy-btn" data-cost="150" data-amount="500">$150 Satın Al</button></div>
-        
-        <button id="close-shop-btn" style="margin-top: 30px;">Ana Menüye Dön</button>
-    </div>
+<!-- SETTINGS -->
+<div id="settings-panel">
+  <div class="panel-box">
+    <h2>🛠️ AYARLAR</h2>
+    <label>Fare Hassasiyeti: <span class="sens-val" id="sens-val">3.0</span></label>
+    <input type="range" id="sens-slider" min="0.5" max="10" step="0.1" value="3.0" oninput="updateSensitivity(this.value)">
+    <br><br>
+    <button class="neon-btn" onclick="closeSettings()">KAPAT</button>
+  </div>
+</div>
 
-    <div id="settings-menu" class="menu" style="display: none;">
-        <h1>Ayarlar</h1>
-        <div class="slider-container">
-            <label for="sens-slider">Aim Hızı (Sensitivity):</label>
-            <input type="range" id="sens-slider" min="0.1" max="3.0" step="0.1" value="1.0">
-            <span id="sens-value">1.0</span>
-        </div>
-        <button id="close-settings-btn" style="margin-top: 30px;">Ana Menüye Dön</button>
-    </div>
+<!-- HUD -->
+<div id="game-hud" class="hidden">
+  <div id="crosshair"><div id="crosshair-dot"></div></div>
+  <div id="scoreboard">
+    <div style="text-align:center"><div id="blue-name">-</div><div id="score-blue">0</div></div>
+    <div id="score-vs">VS</div>
+    <div style="text-align:center"><div id="red-name">-</div><div id="score-red">0</div></div>
+  </div>
+  <div id="timer-display">⏱ 60</div>
+  <div id="mode-indicator"></div>
+  <div id="health-bar-container">
+    <div id="health-icon">❤️</div>
+    <div id="health-bar-bg"><div id="health-bar-fill"></div></div>
+    <div id="health-text">100</div>
+  </div>
+  <div id="ammo-display">
+    <span class="mag" id="ammo-mag">30</span> / <span class="reserve" id="ammo-reserve">70</span>
+  </div>
+  <div id="kill-feed"></div>
+  <!-- Minimap for 2v2 -->
+  <div id="minimap"><canvas id="minimap-canvas" width="140" height="140"></canvas></div>
+  <!-- Teammate health for 2v2 -->
+  <div id="teammate-hud"></div>
+</div>
 
-    <div id="end-screen" class="menu" style="display: none;">
-        <h1>Süre Bitti!</h1>
-        <div class="stats-box">
-            <p>Toplam Puan: <span id="final-score" class="highlight">0</span></p>
-            <p>Saniyede Vurulan: <span id="final-avg" class="highlight">0.0</span></p>
-            <p>İsabet Oranı (Accuracy): <span id="final-acc" class="highlight">%0</span></p>
-            <hr style="border-color: #00ffcc; margin: 20px 0;">
-            <p style="font-size: 20px;">Ham Kazanılan: $<span id="final-base-earned">0</span></p>
-            <p style="font-size: 24px; margin-top: 10px;">İsabet Çarpanı Sonrası Net Kazanç: <span id="final-earned" class="highlight">$0</span></p>
-        </div>
-        <button id="restart-btn">Ana Menüye Dön</button>
-    </div>
+<div id="headshot-notify">💀 HEADSHOT!</div>
+<div id="hitmarker"><svg width="30" height="30"><line x1="5" y1="5" x2="12" y2="12"/><line x1="18" y1="5" x2="25" y2="12"/><line x1="5" y1="25" x2="12" y2="18"/><line x1="18" y1="25" x2="25" y2="18"/></svg></div>
+<div id="damage-flash"></div>
+<div id="muzzle-flash"></div>
+<div id="death-overlay"><h1>💀 VURULDUN!</h1><p id="death-sub">Yeni raunt hazırlanıyor...</p></div>
+<div id="round-win-overlay"><h1>🏆 RAUNT KAZANDIN!</h1></div>
+<div id="match-end-overlay"><h1 id="match-result-text">MAÇ BİTTİ</h1><h2 id="match-result-sub"></h2><button class="neon-btn" onclick="location.reload()">LOBİYE DÖN</button></div>
+<div id="pause-menu"><h1>⏸️ DURAKLADI</h1><button class="neon-btn" onclick="resumeGame()">▶️ OYUNA DÖN</button><button class="neon-btn danger" onclick="leaveMatch()">🚪 MAÇTAN AYRIL</button></div>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-        let audioCtx;
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+<script>
+// ====================== FIREBASE ======================
+const firebaseConfig={apiKey:"AIzaSyCG4KVdUzxdrArk8nXeFU0UWucStUhAV_I",authDomain:"eggaim-multiplayer.firebaseapp.com",projectId:"eggaim-multiplayer",storageBucket:"eggaim-multiplayer.firebasestorage.app",messagingSenderId:"822627410475",appId:"1:822627410475:web:59824880ee66326e93006e",measurementId:"G-TQTLZFK2ET"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ====================== GLOBALS ======================
+let myNickname='',myId='',matchId='',mySlot='',myTeam='';
+let gameMode='1v1'; // '1v1' or '2v2'
+let matchRef=null,gameActive=false,isPaused=false,isDead=false;
+let sensitivity=parseFloat(localStorage.getItem('eggaim_sens')||'3.0');
+
+let myHealth=100,myMag=30,myReserve=70;
+let blueScore=0,redScore=0;
+let roundTime=60,roundTimer=null;
+let isReloading=false,isShooting=false,shootInterval=null;
+let roundActive=false,roundEndProcessing=false;
+let lastFireTime=0;
+const FIRE_RATE=100;
+const MATCH_WIN_SCORE=10;
+
+let scene,camera,renderer,clock;
+let moveForward=false,moveBackward=false,moveLeft=false,moveRight=false;
+let canJump=false,velocity=new THREE.Vector3(),direction=new THREE.Vector3();
+const playerHeight=1.7;
+let isPointerLocked=false;
+
+// Multi-player management
+let playerNames={}; // slot -> name
+let enemySlots=[],allySlots=[];
+let otherPlayers={}; // slot -> {group,targets,headMesh,nameDiv,lastData}
+let allEnemyTargets=[]; // flat array of all enemy meshes for raycaster
+
+let tracers=[],gunGroup;
+let euler=new THREE.Euler(0,0,0,'YXZ');
+
+let audioCtx=null;
+function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx}
+
+// ====================== AUDIO ======================
+function playShootSound(){try{const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.setValueAtTime(600,c.currentTime);o.frequency.exponentialRampToValueAtTime(100,c.currentTime+.08);g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);o.connect(g);g.connect(c.destination);o.start(c.currentTime);o.stop(c.currentTime+.1);const bs=c.sampleRate*.05,b=c.createBuffer(1,bs,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*.4;const n=c.createBufferSource();n.buffer=b;const ng=c.createGain();ng.gain.setValueAtTime(.3,c.currentTime);ng.gain.exponentialRampToValueAtTime(.001,c.currentTime+.06);n.connect(ng);ng.connect(c.destination);n.start(c.currentTime)}catch(e){}}
+function playHitSound(){try{const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(1200,c.currentTime);o.frequency.exponentialRampToValueAtTime(400,c.currentTime+.15);g.gain.setValueAtTime(.25,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.15);o.connect(g);g.connect(c.destination);o.start(c.currentTime);o.stop(c.currentTime+.15)}catch(e){}}
+function playHeadshotSound(){try{const c=getAudioCtx();[800,1200,1600].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.2,c.currentTime+i*.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.05+.1);o.connect(g);g.connect(c.destination);o.start(c.currentTime+i*.05);o.stop(c.currentTime+i*.05+.12)})}catch(e){}}
+function playReloadSound(){try{const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(300,c.currentTime);o.frequency.linearRampToValueAtTime(500,c.currentTime+.3);g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.35);o.connect(g);g.connect(c.destination);o.start(c.currentTime);o.stop(c.currentTime+.35)}catch(e){}}
+
+// ====================== SCREENS ======================
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));if(id)document.getElementById(id)?.classList.remove('hidden')}
+
+// ====================== LOGIN ======================
+function handleLogin(){
+  const input=document.getElementById('nickname-input'),err=document.getElementById('nick-error'),nick=input.value.trim();
+  if(nick.length<3){err.textContent='En az 3 karakter gerekli!';return}
+  if(!/^[a-zA-Z0-9]+$/.test(nick)){err.textContent='Sadece harf ve rakam kullanılabilir!';return}
+  if(nick.length>16){err.textContent='Maksimum 16 karakter!';return}
+  err.textContent='';
+  document.getElementById('login-btn').textContent='Kontrol ediliyor...';
+  db.ref('players/'+nick.toLowerCase()).once('value').then(snap=>{
+    const data=snap.val(),now=Date.now();
+    if(data&&data.online&&(now-data.lastSeen<30000)){err.textContent='Bu isim şu an kullanımda!';document.getElementById('login-btn').textContent='GİRİŞ YAP';return}
+    myNickname=nick;myId=nick.toLowerCase()+'_'+Math.random().toString(36).substr(2,6);
+    localStorage.setItem('eggaim_nick',nick);
+    db.ref('players/'+nick.toLowerCase()).set({online:true,lastSeen:Date.now(),id:myId});
+    setInterval(()=>db.ref('players/'+nick.toLowerCase()).update({lastSeen:Date.now(),online:true}),10000);
+    db.ref('players/'+nick.toLowerCase()).onDisconnect().update({online:false});
+    document.getElementById('lobby-welcome').textContent=`Hoş geldin, ${nick}!`;
+    showScreen('lobby-screen');
+  });
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  const s=localStorage.getItem('eggaim_nick');if(s)document.getElementById('nickname-input').value=s;
+  document.getElementById('sens-slider').value=sensitivity;document.getElementById('sens-val').textContent=sensitivity.toFixed(1);
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('nickname-input').addEventListener('keydown',e=>{if(e.key==='Enter')handleLogin()});
+});
+
+// ====================== SETTINGS ======================
+function openSettings(){document.getElementById('settings-panel').classList.add('show')}
+function closeSettings(){document.getElementById('settings-panel').classList.remove('show')}
+function updateSensitivity(v){sensitivity=parseFloat(v);document.getElementById('sens-val').textContent=sensitivity.toFixed(1);localStorage.setItem('eggaim_sens',sensitivity.toString())}
+
+// ====================== MATCHMAKING ======================
+let matchmakingActive=false;
+
+function startMatchmaking(mode){
+  if(matchmakingActive)return;
+  matchmakingActive=true;gameMode=mode;
+  const btn1=document.getElementById('matchmake-btn-1v1'),btn2=document.getElementById('matchmake-btn-2v2');
+  btn1.style.pointerEvents='none';btn2.style.pointerEvents='none';
+  btn1.style.opacity='.5';btn2.style.opacity='.5';
+  if(mode==='1v1'){btn1.textContent='🔍 Rakip aranıyor...'}
+  else{btn2.textContent='🔍 Takım aranıyor...'}
+  document.getElementById('lobby-status').innerHTML='<span class="searching-dots">Eşleşme aranıyor</span>';
+
+  const mmPath=mode==='1v1'?'matchmaking':'matchmaking2v2';
+  db.ref(mmPath).orderByChild('status').equalTo('waiting').limitToFirst(1).once('value').then(snap=>{
+    const matches=snap.val();
+    if(matches){
+      const mId=Object.keys(matches)[0],m=matches[mId];
+      if(m.player1Id===myId){waitForPlayers(mId,mode);return}
+      if(mode==='1v1'){
+        matchId=mId;mySlot='player2';
+        db.ref(mmPath+'/'+mId).update({player2Name:myNickname,player2Id:myId,status:'ready'}).then(()=>waitForPlayers(mId,mode));
+      }else{
+        // 2v2: find first empty slot
+        let slot=null;
+        if(!m.player2Id)slot='player2';
+        else if(!m.player3Id)slot='player3';
+        else if(!m.player4Id)slot='player4';
+        if(!slot){createNewMatch(mode);return}
+        matchId=mId;mySlot=slot;
+        const upd={[slot+'Name']:myNickname,[slot+'Id']:myId};
+        if(slot==='player4')upd.status='ready';
+        db.ref(mmPath+'/'+mId).update(upd).then(()=>waitForPlayers(mId,mode));
+      }
+    }else{createNewMatch(mode)}
+  });
+}
+
+function createNewMatch(mode){
+  const mmPath=mode==='1v1'?'matchmaking':'matchmaking2v2';
+  matchId='match_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
+  mySlot='player1';
+  const data={player1Name:myNickname,player1Id:myId,status:'waiting',createdAt:Date.now(),mode:mode};
+  db.ref(mmPath+'/'+matchId).set(data).then(()=>waitForPlayers(matchId,mode));
+}
+
+function waitForPlayers(mId,mode){
+  matchId=mId;
+  const mmPath=mode==='1v1'?'matchmaking':'matchmaking2v2';
+  const needed=mode==='1v1'?2:4;
+
+  db.ref(mmPath+'/'+matchId).on('value',snap=>{
+    const data=snap.val();if(!data)return;
+    const filled=[data.player1Name,data.player2Name,data.player3Name,data.player4Name].filter(Boolean);
+    document.getElementById('lobby-status').textContent=`Oyuncular: ${filled.length}/${needed} — ${filled.join(', ')}`;
+
+    if(mode==='1v1'&&data.status==='ready'&&data.player2Name){
+      db.ref(mmPath+'/'+matchId).off();
+      playerNames={player1:data.player1Name,player2:data.player2Name};
+      setupMatch(data);
+    }else if(mode==='2v2'&&filled.length>=4){
+      db.ref(mmPath+'/'+matchId).off();
+      if(data.status!=='ready')db.ref(mmPath+'/'+matchId).update({status:'ready'});
+      playerNames={player1:data.player1Name,player2:data.player2Name,player3:data.player3Name,player4:data.player4Name};
+      setupMatch(data);
+    }
+  });
+}
+
+function setupMatch(mmData){
+  matchRef=db.ref('matches/'+matchId);
+
+  // Determine teams
+  if(gameMode==='1v1'){
+    myTeam=mySlot==='player1'?'blue':'red';
+    enemySlots=[mySlot==='player1'?'player2':'player1'];
+    allySlots=[];
+  }else{
+    myTeam=(mySlot==='player1'||mySlot==='player2')?'blue':'red';
+    const blueSlots=['player1','player2'],redSlots=['player3','player4'];
+    if(myTeam==='blue'){
+      allySlots=blueSlots.filter(s=>s!==mySlot);
+      enemySlots=[...redSlots];
+    }else{
+      allySlots=redSlots.filter(s=>s!==mySlot);
+      enemySlots=[...blueSlots];
+    }
+  }
+
+  // Initialize match data (only player1 does this)
+  if(mySlot==='player1'){
+    const init={mode:gameMode,status:'active',blueScore:0,redScore:0,round:1,roundActive:true};
+    if(gameMode==='1v1'){
+      init.player1={name:playerNames.player1,x:-8,y:playerHeight,z:0,ry:0,health:100,shooting:false,team:'blue'};
+      init.player2={name:playerNames.player2,x:8,y:playerHeight,z:0,ry:Math.PI,health:100,shooting:false,team:'red'};
+    }else{
+      init.player1={name:playerNames.player1,x:-35,y:playerHeight,z:-5,ry:0,health:100,shooting:false,team:'blue'};
+      init.player2={name:playerNames.player2,x:-35,y:playerHeight,z:5,ry:0,health:100,shooting:false,team:'blue'};
+      init.player3={name:playerNames.player3,x:35,y:playerHeight,z:-5,ry:Math.PI,health:100,shooting:false,team:'red'};
+      init.player4={name:playerNames.player4,x:35,y:playerHeight,z:5,ry:Math.PI,health:100,shooting:false,team:'red'};
+    }
+    matchRef.set(init);
+  }
+
+  // Show ready screen
+  if(gameMode==='1v1'){
+    document.getElementById('ready-title').textContent='RAKIP BULUNDU!';
+    const opSlot=enemySlots[0];
+    document.getElementById('opponent-name-display').textContent='vs '+playerNames[opSlot];
+    document.getElementById('opponent-name-display').style.display='';
+    document.getElementById('team-display').style.display='none';
+  }else{
+    document.getElementById('ready-title').textContent='EŞLEŞME BULUNDU!';
+    document.getElementById('opponent-name-display').style.display='none';
+    document.getElementById('team-display').style.display='flex';
+    const blueList=document.getElementById('blue-team-list');
+    const redList=document.getElementById('red-team-list');
+    blueList.innerHTML='';redList.innerHTML='';
+    ['player1','player2'].forEach(s=>{
+      const p=document.createElement('p');p.textContent=playerNames[s];
+      if(s===mySlot)p.className='me';
+      blueList.appendChild(p);
+    });
+    ['player3','player4'].forEach(s=>{
+      const p=document.createElement('p');p.textContent=playerNames[s];
+      if(s===mySlot)p.className='me';
+      redList.appendChild(p);
+    });
+  }
+  showScreen('ready-screen');
+  matchmakingActive=false;
+}
+
+// ====================== ENTER BATTLE ======================
+function enterBattle(){
+  showScreen(null);
+  document.getElementById('game-hud').classList.remove('hidden');
+  const mi=document.getElementById('mode-indicator');
+  mi.textContent=gameMode==='1v1'?'⚔️ 1v1':'👥 2v2';
+  mi.style.color=gameMode==='1v1'?'var(--neon)':'#ff8800';
+
+  // Show 2v2-specific HUD elements
+  if(gameMode==='2v2'){
+    document.getElementById('minimap').style.display='block';
+    document.getElementById('teammate-hud').style.display='flex';
+    // Build teammate bars
+    const tmHud=document.getElementById('teammate-hud');
+    tmHud.innerHTML='';
+    allySlots.forEach(slot=>{
+      const bar=document.createElement('div');bar.className='teammate-bar';bar.id='tm-'+slot;
+      bar.innerHTML=`<span class="tm-name">${playerNames[slot]||'?'}</span><div class="tm-hp-bg"><div class="tm-hp-fill" id="tm-hp-${slot}" style="width:100%"></div></div><span class="tm-hp-text" id="tm-txt-${slot}">100</span>`;
+      tmHud.appendChild(bar);
+    });
+  }
+
+  initThreeJS();
+  initPointerLock();
+  startGameLoop();
+  listenToAllPlayers();
+  startRound();
+}
+
+// ====================== THREE.JS SETUP ======================
+function initThreeJS(){
+  const is2v2=gameMode==='2v2';
+  const arenaSize=is2v2?80:40;
+  const fogFar=is2v2?120:80;
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x1a1a2e);
+  scene.fog=new THREE.Fog(0x1a1a2e,30,fogFar);
+
+  camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,.1,1000);
+  const spawnPos=getSpawnPosition();
+  camera.position.set(spawnPos.x,playerHeight,spawnPos.z);
+  const lookAngle=(myTeam==='blue')?0:Math.PI;
+  euler.set(0,lookAngle,0);
+  camera.quaternion.setFromEuler(euler);
+
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled=true;
+  document.body.appendChild(renderer.domElement);
+  clock=new THREE.Clock();
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff,.5));
+  const dirL=new THREE.DirectionalLight(0xffffff,.8);dirL.position.set(10,20,10);dirL.castShadow=true;scene.add(dirL);
+  scene.add(new THREE.PointLight(0x00ffcc,.4,60));
+
+  if(is2v2){
+    // Extra lights for larger map
+    const pl1=new THREE.PointLight(0x4488ff,.3,40);pl1.position.set(-30,8,0);scene.add(pl1);
+    const pl2=new THREE.PointLight(0xff4444,.3,40);pl2.position.set(30,8,0);scene.add(pl2);
+    const pl3=new THREE.PointLight(0xffffff,.3,50);pl3.position.set(0,12,0);scene.add(pl3);
+    const pl4=new THREE.PointLight(0x00ffcc,.2,40);pl4.position.set(0,6,-25);scene.add(pl4);
+    const pl5=new THREE.PointLight(0x00ffcc,.2,40);pl5.position.set(0,6,25);scene.add(pl5);
+  }
+
+  // Ground
+  const groundGeo=new THREE.PlaneGeometry(arenaSize*1.5,arenaSize*1.5);
+  const groundMat=new THREE.MeshStandardMaterial({color:0x888888,roughness:.9});
+  const ground=new THREE.Mesh(groundGeo,groundMat);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+  // Grid
+  const grid=new THREE.GridHelper(arenaSize*1.2,arenaSize,0x222222,0x333333);grid.position.y=.01;scene.add(grid);
+
+  // Walls
+  const wallMat=new THREE.MeshStandardMaterial({color:0x2a2a3e,roughness:.7});
+  const wallH=5,hs=arenaSize/2;
+  [{w:arenaSize,h:wallH,d:.5,x:0,y:wallH/2,z:-hs},{w:arenaSize,h:wallH,d:.5,x:0,y:wallH/2,z:hs},{w:.5,h:wallH,d:arenaSize,x:-hs,y:wallH/2,z:0},{w:.5,h:wallH,d:arenaSize,x:hs,y:wallH/2,z:0}].forEach(w=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w.w,w.h,w.d),wallMat);m.position.set(w.x,w.y,w.z);m.castShadow=true;m.receiveShadow=true;scene.add(m);
+  });
+
+  // Cover objects
+  const coverMat=new THREE.MeshStandardMaterial({color:0x3d3d5c});
+  const coverMat2=new THREE.MeshStandardMaterial({color:0x4a4a6a});
+  const coverMat3=new THREE.MeshStandardMaterial({color:0x555577});
+  const spawnMatBlue=new THREE.MeshStandardMaterial({color:0x2a3a5a});
+  const spawnMatRed=new THREE.MeshStandardMaterial({color:0x5a2a2a});
+
+  const covers=is2v2?[
+    // ===== CENTRAL CROSS =====
+    {x:0,z:0,sx:10,sy:3,sz:1.5,m:coverMat},
+    {x:0,z:0,sx:1.5,sy:3,sz:10,m:coverMat},
+    // Central pillars
+    {x:-4,z:-4,sx:1,sy:4,sz:1,m:coverMat2},{x:4,z:4,sx:1,sy:4,sz:1,m:coverMat2},
+    {x:-4,z:4,sx:1,sy:4,sz:1,m:coverMat2},{x:4,z:-4,sx:1,sy:4,sz:1,m:coverMat2},
+
+    // ===== MID-FIELD LEFT =====
+    {x:-15,z:-10,sx:4,sy:2,sz:1,m:coverMat},{x:-15,z:10,sx:4,sy:2,sz:1,m:coverMat},
+    {x:-12,z:0,sx:1,sy:2.5,sz:5,m:coverMat2},
+    {x:-18,z:-4,sx:2,sy:1.5,sz:2,m:coverMat3},{x:-18,z:4,sx:2,sy:1.5,sz:2,m:coverMat3},
+
+    // ===== MID-FIELD RIGHT =====
+    {x:15,z:-10,sx:4,sy:2,sz:1,m:coverMat},{x:15,z:10,sx:4,sy:2,sz:1,m:coverMat},
+    {x:12,z:0,sx:1,sy:2.5,sz:5,m:coverMat2},
+    {x:18,z:-4,sx:2,sy:1.5,sz:2,m:coverMat3},{x:18,z:4,sx:2,sy:1.5,sz:2,m:coverMat3},
+
+    // ===== CORNER BUILDINGS =====
+    {x:-25,z:-25,sx:6,sy:3.5,sz:6,m:coverMat2},{x:25,z:25,sx:6,sy:3.5,sz:6,m:coverMat2},
+    {x:-25,z:25,sx:6,sy:3.5,sz:6,m:coverMat2},{x:25,z:-25,sx:6,sy:3.5,sz:6,m:coverMat2},
+    // Corner small covers
+    {x:-22,z:-18,sx:1.5,sy:2,sz:3,m:coverMat},{x:22,z:18,sx:1.5,sy:2,sz:3,m:coverMat},
+    {x:-22,z:18,sx:1.5,sy:2,sz:3,m:coverMat},{x:22,z:-18,sx:1.5,sy:2,sz:3,m:coverMat},
+
+    // ===== SCATTERED COVER =====
+    {x:-8,z:-20,sx:2.5,sy:1.5,sz:2.5,m:coverMat3},{x:8,z:20,sx:2.5,sy:1.5,sz:2.5,m:coverMat3},
+    {x:-8,z:20,sx:2,sy:1.5,sz:2,m:coverMat3},{x:8,z:-20,sx:2,sy:1.5,sz:2,m:coverMat3},
+    {x:0,z:-18,sx:1,sy:2,sz:3,m:coverMat},{x:0,z:18,sx:1,sy:2,sz:3,m:coverMat},
+    {x:-20,z:0,sx:2,sy:2,sz:1,m:coverMat3},{x:20,z:0,sx:2,sy:2,sz:1,m:coverMat3},
+
+    // ===== BLUE SPAWN SHELTER =====
+    {x:-34,z:0,sx:1,sy:4,sz:18,m:spawnMatBlue},   // front wall
+    {x:-37,z:-9,sx:5,sy:4,sz:1,m:spawnMatBlue},    // top wall
+    {x:-37,z:9,sx:5,sy:4,sz:1,m:spawnMatBlue},     // bottom wall
+    {x:-38,z:-4,sx:2,sy:1.5,sz:2,m:spawnMatBlue},  // internal cover
+    {x:-38,z:4,sx:2,sy:1.5,sz:2,m:spawnMatBlue},
+
+    // ===== RED SPAWN SHELTER =====
+    {x:34,z:0,sx:1,sy:4,sz:18,m:spawnMatRed},
+    {x:37,z:-9,sx:5,sy:4,sz:1,m:spawnMatRed},
+    {x:37,z:9,sx:5,sy:4,sz:1,m:spawnMatRed},
+    {x:38,z:-4,sx:2,sy:1.5,sz:2,m:spawnMatRed},
+    {x:38,z:4,sx:2,sy:1.5,sz:2,m:spawnMatRed},
+
+    // ===== LANE DIVIDERS =====
+    {x:-7,z:-13,sx:1,sy:2.5,sz:1,m:coverMat},{x:7,z:13,sx:1,sy:2.5,sz:1,m:coverMat},
+    {x:-28,z:-12,sx:3,sy:2,sz:1,m:coverMat3},{x:28,z:12,sx:3,sy:2,sz:1,m:coverMat3},
+    {x:-28,z:12,sx:3,sy:2,sz:1,m:coverMat3},{x:28,z:-12,sx:3,sy:2,sz:1,m:coverMat3},
+  ]:[
+    // 1v1 covers (original)
+    {x:-3,z:-5,sx:2,sy:1.5,sz:2,m:coverMat},{x:3,z:5,sx:2,sy:1.5,sz:2,m:coverMat},
+    {x:0,z:0,sx:1.5,sy:1,sz:4,m:coverMat},{x:-8,z:8,sx:3,sy:2,sz:1,m:coverMat},
+    {x:8,z:-8,sx:3,sy:2,sz:1,m:coverMat},{x:-6,z:-10,sx:1,sy:2.5,sz:1,m:coverMat2},
+    {x:6,z:10,sx:1,sy:2.5,sz:1,m:coverMat2},
+  ];
+
+  covers.forEach(c=>{
+    const geo=new THREE.BoxGeometry(c.sx,c.sy,c.sz);
+    const mesh=new THREE.Mesh(geo,c.m||coverMat);
+    mesh.position.set(c.x,c.sy/2,c.z);mesh.castShadow=true;mesh.receiveShadow=true;
+    scene.add(mesh);
+  });
+
+  // Create other player models
+  const allSlots=gameMode==='1v1'?['player1','player2']:['player1','player2','player3','player4'];
+  allSlots.forEach(slot=>{
+    if(slot===mySlot)return;
+    const isEnemy=enemySlots.includes(slot);
+    const team=(slot==='player1'||slot==='player2')?'blue':'red';
+    createOtherPlayerModel(slot,playerNames[slot]||'?',isEnemy,team);
+  });
+
+  // Gun model
+  createGunModel();
+
+  window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
+}
+
+function getSpawnPosition(){
+  const is2v2=gameMode==='2v2';
+  if(is2v2){
+    const spawns={
+      player1:{x:-36,z:-4},player2:{x:-36,z:4},
+      player3:{x:36,z:-4},player4:{x:36,z:4}
+    };
+    const s=spawns[mySlot]||{x:0,z:0};
+    return{x:s.x+(Math.random()-.5)*2,z:s.z+(Math.random()-.5)*2};
+  }else{
+    const baseX=mySlot==='player1'?-8:8;
+    return{x:baseX,z:(Math.random()-.5)*10};
+  }
+}
+
+function createGunModel(){
+  gunGroup=new THREE.Group();
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x2a2a2a,metalness:.8,roughness:.3});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.06,.08,.45),bodyMat);body.position.set(0,0,-.15);gunGroup.add(body);
+  const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.012,.015,.35,8),new THREE.MeshStandardMaterial({color:0x111111,metalness:.9,roughness:.2}));barrel.rotation.x=Math.PI/2;barrel.position.set(0,.02,-.5);gunGroup.add(barrel);
+  const handle=new THREE.Mesh(new THREE.BoxGeometry(.04,.12,.06),new THREE.MeshStandardMaterial({color:0x1a1a1a}));handle.position.set(0,-.08,0);handle.rotation.x=-.2;gunGroup.add(handle);
+  const mag=new THREE.Mesh(new THREE.BoxGeometry(.035,.1,.04),new THREE.MeshStandardMaterial({color:0x333333}));mag.position.set(0,-.1,-.08);gunGroup.add(mag);
+  const rail=new THREE.Mesh(new THREE.BoxGeometry(.025,.015,.2),new THREE.MeshStandardMaterial({color:0x1a1a1a}));rail.position.set(0,.055,-.15);gunGroup.add(rail);
+  gunGroup.position.set(.25,-.2,-.45);camera.add(gunGroup);scene.add(camera);
+}
+
+// ====================== PLAYER MODEL FACTORY ======================
+function createOtherPlayerModel(slot,name,isEnemy,team){
+  const group=new THREE.Group();
+  group.name='player_'+slot;
+  const targets=[];
+
+  // Colors based on team
+  const bodyColor=team==='blue'?0x3a5588:0x884433;
+  const vestColor=team==='blue'?0x4a6699:0x995544;
+  const pantsColor=team==='blue'?0x2a3a4a:0x4a2a2a;
+  const helmetColor=team==='blue'?0x3a5577:0x773a3a;
+  const skinMat=new THREE.MeshStandardMaterial({color:0xd4a574});
+  const bodyMat=new THREE.MeshStandardMaterial({color:bodyColor});
+  const pantsMat=new THREE.MeshStandardMaterial({color:pantsColor});
+  const helmetMat=new THREE.MeshStandardMaterial({color:helmetColor,metalness:.3});
+  const bootMat=new THREE.MeshStandardMaterial({color:0x2a2a1a});
+  const vestMat=new THREE.MeshStandardMaterial({color:vestColor});
+
+  // Boots
+  const bootGeo=new THREE.BoxGeometry(.3,.2,.4);
+  const lb=new THREE.Mesh(bootGeo,bootMat);lb.position.set(-.18,.1,.05);lb.userData={part:'body',slot};group.add(lb);
+  const rb=new THREE.Mesh(bootGeo,bootMat);rb.position.set(.18,.1,.05);rb.userData={part:'body',slot};group.add(rb);
+  if(isEnemy){targets.push(lb,rb)}
+
+  // Legs
+  const legGeo=new THREE.BoxGeometry(.22,.6,.25);
+  const ll=new THREE.Mesh(legGeo,pantsMat);ll.position.set(-.18,.5,0);ll.userData={part:'body',slot};group.add(ll);
+  const rl=new THREE.Mesh(legGeo,pantsMat);rl.position.set(.18,.5,0);rl.userData={part:'body',slot};group.add(rl);
+  if(isEnemy){targets.push(ll,rl)}
+
+  // Torso
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(.6,.65,.35),bodyMat);torso.position.set(0,1.15,0);torso.userData={part:'body',slot};group.add(torso);
+  if(isEnemy)targets.push(torso);
+
+  // Vest
+  const vest=new THREE.Mesh(new THREE.BoxGeometry(.55,.4,.38),vestMat);vest.position.set(0,1.2,0);vest.userData={part:'body',slot};group.add(vest);
+  if(isEnemy)targets.push(vest);
+
+  // Arms
+  const armGeo=new THREE.BoxGeometry(.18,.55,.2);
+  const la=new THREE.Mesh(armGeo,bodyMat);la.position.set(-.42,1.1,0);la.userData={part:'body',slot};group.add(la);
+  const ra=new THREE.Mesh(armGeo,bodyMat);ra.position.set(.42,1.1,0);ra.userData={part:'body',slot};group.add(ra);
+  if(isEnemy){targets.push(la,ra)}
+
+  // Neck
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,.12,8),skinMat);neck.position.set(0,1.53,0);neck.userData={part:'head',slot};group.add(neck);
+  if(isEnemy)targets.push(neck);
+
+  // Head
+  const headMesh=new THREE.Mesh(new THREE.BoxGeometry(.3,.3,.3),skinMat);headMesh.position.set(0,1.72,0);headMesh.userData={part:'head',slot};group.add(headMesh);
+  if(isEnemy)targets.push(headMesh);
+
+  // Helmet
+  const helmet=new THREE.Mesh(new THREE.BoxGeometry(.36,.2,.36),helmetMat);helmet.position.set(0,1.9,0);helmet.userData={part:'head',slot};group.add(helmet);
+  if(isEnemy)targets.push(helmet);
+
+  // Eyes
+  const eyeGeo=new THREE.BoxGeometry(.06,.04,.02);
+  const eyeMat=new THREE.MeshStandardMaterial({color:0x111111});
+  const le=new THREE.Mesh(eyeGeo,eyeMat);le.position.set(-.08,1.75,-.16);le.userData={part:'head',slot};group.add(le);
+  const re=new THREE.Mesh(eyeGeo,eyeMat);re.position.set(.08,1.75,-.16);re.userData={part:'head',slot};group.add(re);
+  if(isEnemy){targets.push(le,re)}
+
+  // Team indicator ring on head (so allies have a clear marker)
+  if(!isEnemy){
+    const ringGeo=new THREE.RingGeometry(.25,.3,16);
+    const ringMat=new THREE.MeshBasicMaterial({color:team==='blue'?0x4488ff:0xff4444,side:THREE.DoubleSide});
+    const ring=new THREE.Mesh(ringGeo,ringMat);ring.position.set(0,2.1,0);ring.rotation.x=-Math.PI/2;
+    group.add(ring);
+  }
+
+  // Default position
+  const sp=getSlotSpawn(slot);
+  group.position.set(sp.x,0,sp.z);
+  scene.add(group);
+
+  // Name tag DOM
+  const nameDiv=document.createElement('div');
+  const borderColor=isEnemy?'#ff4444':(team==='blue'?'#4488ff':'#ff8866');
+  const txtColor=isEnemy?'#ff8888':'#88ff88';
+  nameDiv.style.cssText=`position:fixed;color:${txtColor};font-family:Orbitron;font-size:11px;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;pointer-events:none;z-index:495;white-space:nowrap;border:1px solid ${borderColor};`;
+  nameDiv.textContent=name;
+  document.body.appendChild(nameDiv);
+
+  // Store
+  otherPlayers[slot]={group,targets,headMesh,nameDiv,lastData:null,isEnemy,team,name};
+  if(isEnemy)allEnemyTargets.push(...targets);
+}
+
+function getSlotSpawn(slot){
+  if(gameMode==='2v2'){
+    const spawns={player1:{x:-36,z:-4},player2:{x:-36,z:4},player3:{x:36,z:-4},player4:{x:36,z:4}};
+    return spawns[slot]||{x:0,z:0};
+  }else{
+    return slot==='player1'?{x:-8,z:0}:{x:8,z:0};
+  }
+}
+
+// ====================== POINTER LOCK ======================
+function initPointerLock(){
+  const canvas=renderer.domElement;
+  canvas.addEventListener('click',()=>{if(!isPointerLocked&&gameActive&&!isPaused)canvas.requestPointerLock()});
+
+  document.addEventListener('pointerlockchange',()=>{
+    const was=isPointerLocked;isPointerLocked=document.pointerLockElement===canvas;
+    if(was&&!isPointerLocked&&gameActive&&!isPaused){
+      isPaused=true;isShooting=false;if(shootInterval){clearInterval(shootInterval);shootInterval=null}
+      document.getElementById('pause-menu').classList.add('show');document.getElementById('pause-menu').style.display='flex';
+    }
+  });
+
+  document.addEventListener('mousemove',e=>{
+    if(!isPointerLocked||isPaused)return;
+    euler.setFromQuaternion(camera.quaternion);
+    euler.y-=(e.movementX||0)*.002*sensitivity;
+    euler.x-=(e.movementY||0)*.002*sensitivity;
+    euler.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,euler.x));
+    camera.quaternion.setFromEuler(euler);
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(!gameActive)return;
+    switch(e.code){
+      case'KeyW':moveForward=true;break;case'KeyS':moveBackward=true;break;
+      case'KeyA':moveLeft=true;break;case'KeyD':moveRight=true;break;
+      case'Space':if(canJump){velocity.y=7;canJump=false}break;
+      case'KeyR':reload();break;
+      case'Escape':e.preventDefault();if(isPaused)resumeGame();break;
+    }
+  });
+  document.addEventListener('keyup',e=>{
+    switch(e.code){case'KeyW':moveForward=false;break;case'KeyS':moveBackward=false;break;case'KeyA':moveLeft=false;break;case'KeyD':moveRight=false;break}
+  });
+
+  document.addEventListener('mousedown',e=>{
+    if(e.button===0&&isPointerLocked&&gameActive&&!isPaused&&roundActive&&!isDead){
+      isShooting=true;shoot();
+      shootInterval=setInterval(()=>{if(isShooting&&isPointerLocked&&roundActive&&!isPaused&&!isDead)shoot()},FIRE_RATE);
+    }
+  });
+  document.addEventListener('mouseup',e=>{if(e.button===0){isShooting=false;if(shootInterval){clearInterval(shootInterval);shootInterval=null}}});
+}
+
+// ====================== SHOOTING ======================
+function shoot(){
+  if(!roundActive||isPaused||isReloading||isDead)return;
+  if(myMag<=0){reload();return}
+  const now=Date.now();if(now-lastFireTime<FIRE_RATE)return;lastFireTime=now;
+  myMag--;updateAmmoUI();playShootSound();muzzleFlash();recoilAnimation();
+
+  const raycaster=new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(0,0),camera);raycaster.far=200;
+  createTracer(raycaster.ray.origin.clone(),raycaster.ray.direction.clone());
+
+  // Update world matrices for ALL enemy models
+  enemySlots.forEach(slot=>{
+    const p=otherPlayers[slot];if(!p||!p.group)return;
+    p.group.updateWorldMatrix(true,true);
+    p.group.traverse(child=>{
+      if(child.isMesh){child.updateMatrixWorld(true);if(!child.geometry.boundingBox)child.geometry.computeBoundingBox();if(!child.geometry.boundingSphere)child.geometry.computeBoundingSphere()}
+    });
+  });
+
+  const rawIntersects=raycaster.intersectObjects(allEnemyTargets,false);
+  // Filter: skip dead/invisible players
+  const intersects=rawIntersects.filter(h=>{
+    const s=h.object.userData.slot;
+    return otherPlayers[s]&&otherPlayers[s].group.visible;
+  });
+  if(intersects.length>0){
+    const hit=intersects[0];
+    const part=hit.object.userData.part;
+    const hitSlot=hit.object.userData.slot;
+    const damage=part==='head'?100:15;
+
+    matchRef.child(hitSlot+'/health').transaction(current=>{
+      if(current===null||current===undefined)return 100;
+      if(current<=0)return; // abort - already dead, prevent double scoring
+      return Math.max(0,current-damage);
+    },(error,committed,snapshot)=>{
+      if(committed&&snapshot.val()!==null&&snapshot.val()<=0){
+        const teamKey=myTeam+'Score';
+        matchRef.child(teamKey).transaction(s=>(s||0)+1);
+        addKillFeed(`${myNickname} ➜ ${playerNames[hitSlot]||'?'}`);
+      }
+    });
+
+    playHitSound();showHitmarker();
+    if(part==='head'){playHeadshotSound();showHeadshot()}
+
+    matchRef.child('lastHit').set({by:mySlot,target:hitSlot,damage,part,time:Date.now()});
+  }
+
+  matchRef.child(mySlot+'/shooting').set(true);
+  setTimeout(()=>matchRef.child(mySlot+'/shooting').set(false),100);
+}
+
+function reload(){
+  if(isReloading||myReserve<=0||myMag>=30)return;isReloading=true;playReloadSound();
+  setTimeout(()=>{const needed=30-myMag,toLoad=Math.min(needed,myReserve);myMag+=toLoad;myReserve-=toLoad;updateAmmoUI();isReloading=false},1500);
+}
+function muzzleFlash(){const el=document.getElementById('muzzle-flash');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),50)}
+function recoilAnimation(){if(!gunGroup)return;gunGroup.position.z=-.4;gunGroup.rotation.x=-.08;setTimeout(()=>{gunGroup.position.z=-.45;gunGroup.rotation.x=0},60)}
+function showHitmarker(){const el=document.getElementById('hitmarker');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),150)}
+function showHeadshot(){const el=document.getElementById('headshot-notify');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1200)}
+function showDamageFlash(){const el=document.getElementById('damage-flash');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),200)}
+
+function createTracer(origin,dir){
+  const geo=new THREE.CylinderGeometry(.015,.015,3,4);
+  const mat=new THREE.MeshBasicMaterial({color:0xffdd00,transparent:true,opacity:.9});
+  const tracer=new THREE.Mesh(geo,mat);
+  const quat=new THREE.Quaternion();quat.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
+  tracer.quaternion.copy(quat);tracer.position.copy(origin).add(dir.clone().multiplyScalar(1));
+  scene.add(tracer);tracers.push({mesh:tracer,dir:dir.clone().normalize(),life:0,speed:120});
+}
+
+// ====================== PLAYER SYNC ======================
+function listenToAllPlayers(){
+  // Listen to all other players' data
+  const allSlots=gameMode==='1v1'?['player1','player2']:['player1','player2','player3','player4'];
+  allSlots.forEach(slot=>{
+    if(slot===mySlot)return;
+    matchRef.child(slot).on('value',snap=>{
+      if(otherPlayers[slot])otherPlayers[slot].lastData=snap.val();
+    });
+  });
+
+  // Listen for hits on me
+  matchRef.child('lastHit').on('value',snap=>{
+    const d=snap.val();if(!d||d.by===mySlot)return;
+    if(d.target===mySlot)showDamageFlash();
+  });
+
+  // Listen for my health
+  matchRef.child(mySlot+'/health').on('value',snap=>{
+    const hp=snap.val();if(hp===null)return;
+    myHealth=hp;updateHealthUI();
+    if(hp<=0&&roundActive&&!isDead){
+      isDead=true;handleMyDeath();
+    }
+  });
+
+  // Listen for scores
+  matchRef.child('blueScore').on('value',snap=>{blueScore=snap.val()||0;updateScoreUI();checkMatchWin()});
+  matchRef.child('redScore').on('value',snap=>{redScore=snap.val()||0;updateScoreUI();checkMatchWin()});
+
+  // 1v1: listen for opponent death to handle round win
+  if(gameMode==='1v1'){
+    const opSlot=enemySlots[0];
+    matchRef.child(opSlot+'/health').on('value',snap=>{
+      const hp=snap.val();if(hp===null)return;
+      if(hp<=0&&roundActive&&!roundEndProcessing){
+        roundEndProcessing=true;handleOpponentDeath1v1();
+      }
+    });
+  }
+
+  // Match status
+  matchRef.child('status').on('value',snap=>{
+    if(snap.val()==='ended'&&gameActive){showMatchEnd('Rakip ayrıldı!',true)}
+  });
+}
+
+// ====================== ROUND / DEATH ======================
+function startRound(){
+  roundEndProcessing=false;roundActive=true;gameActive=true;isDead=false;
+  myHealth=100;myMag=30;myReserve=70;isReloading=false;isShooting=false;
+  if(shootInterval){clearInterval(shootInterval);shootInterval=null}
+
+  const rt=gameMode==='2v2'?120:60;
+  roundTime=rt;
+
+  document.getElementById('death-overlay').classList.remove('show');
+  document.getElementById('round-win-overlay').classList.remove('show');
+  updateHealthUI();updateAmmoUI();updateScoreUI();
+
+  const sp=getSpawnPosition();
+  camera.position.set(sp.x,playerHeight,sp.z);
+  const lookAngle=(myTeam==='blue')?0:Math.PI;
+  euler.set(0,lookAngle,0);camera.quaternion.setFromEuler(euler);
+  velocity.set(0,0,0);moveForward=false;moveBackward=false;moveLeft=false;moveRight=false;
+
+  matchRef.child(mySlot).update({health:100,x:sp.x,y:playerHeight,z:sp.z,shooting:false});
+
+  if(roundTimer)clearInterval(roundTimer);
+  roundTimer=setInterval(()=>{
+    if(isPaused||!roundActive)return;
+    roundTime--;
+    document.getElementById('timer-display').textContent='⏱ '+Math.max(0,roundTime);
+    if(roundTime<=0&&roundActive){
+      if(gameMode==='1v1'){
+        roundActive=false;if(roundTimer){clearInterval(roundTimer);roundTimer=null}
+        addKillFeed('Süre doldu! Puan verilmedi.');
+        setTimeout(()=>startRound(),3000);
+      }else{
+        roundActive=false;if(roundTimer){clearInterval(roundTimer);roundTimer=null}
+        addKillFeed('Süre doldu!');
+        setTimeout(()=>startRound(),3000);
+      }
+    }
+  },1000);
+
+  if(renderer&&!isPaused){setTimeout(()=>{renderer.domElement.requestPointerLock().catch(()=>{})},100)}
+}
+
+function handleMyDeath(){
+  isShooting=false;if(shootInterval){clearInterval(shootInterval);shootInterval=null}
+  document.getElementById('death-overlay').classList.add('show');
+
+  if(gameMode==='1v1'){
+    // 1v1: round-based death
+    roundActive=false;if(roundTimer)clearInterval(roundTimer);
+    document.getElementById('death-sub').textContent='Yeni raunt hazırlanıyor...';
+    setTimeout(()=>{document.getElementById('death-overlay').classList.remove('show');checkMatchWinOrNextRound()},3000);
+  }else{
+    // 2v2: individual respawn
+    document.getElementById('death-sub').textContent='3 saniye sonra yeniden doğacaksın...';
+    setTimeout(()=>{
+      if(!gameActive)return;
+      isDead=false;myHealth=100;myMag=30;myReserve=70;isReloading=false;
+      const sp=getSpawnPosition();
+      camera.position.set(sp.x,playerHeight,sp.z);
+      const lookAngle=(myTeam==='blue')?0:Math.PI;
+      euler.set(0,lookAngle,0);camera.quaternion.setFromEuler(euler);
+      velocity.set(0,0,0);
+      matchRef.child(mySlot).update({health:100,x:sp.x,y:playerHeight,z:sp.z,shooting:false});
+      updateHealthUI();updateAmmoUI();
+      document.getElementById('death-overlay').classList.remove('show');
+    },3000);
+  }
+}
+
+function handleOpponentDeath1v1(){
+  // Only for 1v1
+  roundActive=false;if(roundTimer)clearInterval(roundTimer);
+  // Score is handled by the killer in shoot() transaction callback
+  document.getElementById('round-win-overlay').classList.add('show');
+  setTimeout(()=>{document.getElementById('round-win-overlay').classList.remove('show');checkMatchWinOrNextRound()},3000);
+}
+
+function checkMatchWin(){
+  const myTeamScore=myTeam==='blue'?blueScore:redScore;
+  const opTeamScore=myTeam==='blue'?redScore:blueScore;
+  if(myTeamScore>=MATCH_WIN_SCORE){showMatchEnd('KAZANDIN! 🏆',true)}
+  else if(opTeamScore>=MATCH_WIN_SCORE){showMatchEnd('KAYBETTİN! 💀',false)}
+}
+
+function checkMatchWinOrNextRound(){
+  const myTeamScore=myTeam==='blue'?blueScore:redScore;
+  const opTeamScore=myTeam==='blue'?redScore:blueScore;
+  if(myTeamScore>=MATCH_WIN_SCORE){showMatchEnd('KAZANDIN! 🏆',true)}
+  else if(opTeamScore>=MATCH_WIN_SCORE){showMatchEnd('KAYBETTİN! 💀',false)}
+  else{startRound()}
+}
+
+function showMatchEnd(text,won){
+  gameActive=false;roundActive=false;if(roundTimer)clearInterval(roundTimer);
+  document.getElementById('match-result-text').textContent='MAÇ BİTTİ';
+  document.getElementById('match-result-sub').textContent=text+` (${blueScore} - ${redScore})`;
+  document.getElementById('match-end-overlay').classList.add('show');
+  document.getElementById('match-end-overlay').style.display='flex';
+  matchRef.child('status').set('ended');
+  if(document.pointerLockElement)document.exitPointerLock();
+}
+
+// ====================== PAUSE ======================
+function resumeGame(){isPaused=false;document.getElementById('pause-menu').classList.remove('show');document.getElementById('pause-menu').style.display='none';renderer.domElement.requestPointerLock().catch(()=>{})}
+function leaveMatch(){matchRef.child('status').set('ended');const mmPath=gameMode==='1v1'?'matchmaking':'matchmaking2v2';db.ref(mmPath+'/'+matchId).remove();location.reload()}
+
+// ====================== UI ======================
+function updateHealthUI(){
+  const pct=Math.max(0,myHealth);
+  document.getElementById('health-bar-fill').style.width=pct+'%';
+  document.getElementById('health-text').textContent=pct;
+  const f=document.getElementById('health-bar-fill');
+  if(pct>60)f.style.background='linear-gradient(90deg,#00ff88,#00ffcc)';
+  else if(pct>30)f.style.background='linear-gradient(90deg,#ffaa00,#ffdd00)';
+  else f.style.background='linear-gradient(90deg,#ff2222,#ff6644)';
+}
+function updateAmmoUI(){document.getElementById('ammo-mag').textContent=myMag;document.getElementById('ammo-reserve').textContent=myReserve}
+
+function updateScoreUI(){
+  document.getElementById('score-blue').textContent=blueScore;
+  document.getElementById('score-red').textContent=redScore;
+  if(gameMode==='1v1'){
+    const p1=playerNames.player1||'-',p2=playerNames.player2||'-';
+    document.getElementById('blue-name').textContent=p1;
+    document.getElementById('red-name').textContent=p2;
+  }else{
+    document.getElementById('blue-name').textContent=(playerNames.player1||'?')+', '+(playerNames.player2||'?');
+    document.getElementById('red-name').textContent=(playerNames.player3||'?')+', '+(playerNames.player4||'?');
+  }
+}
+
+function addKillFeed(text){
+  const el=document.getElementById('kill-feed'),item=document.createElement('div');
+  item.className='kill-feed-item';item.textContent=text;el.appendChild(item);
+  setTimeout(()=>item.remove(),3500);
+}
+
+// ====================== GAME LOOP ======================
+function startGameLoop(){
+  let sendTimer=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!gameActive){renderer.render(scene,camera);return}
+    const delta=clock.getDelta();
+
+    if(!isPaused&&!isDead){
+      velocity.y-=20*delta;
+      direction.z=Number(moveForward)-Number(moveBackward);
+      direction.x=Number(moveRight)-Number(moveLeft);
+      direction.normalize();
+
+      const speed=8;
+      const forward=new THREE.Vector3();camera.getWorldDirection(forward);forward.y=0;forward.normalize();
+      const right=new THREE.Vector3();right.crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
+      if(direction.z!==0)camera.position.addScaledVector(forward,direction.z*speed*delta);
+      if(direction.x!==0)camera.position.addScaledVector(right,direction.x*speed*delta);
+      camera.position.y+=velocity.y*delta;
+
+      if(camera.position.y<playerHeight){camera.position.y=playerHeight;velocity.y=0;canJump=true}
+
+      const bound=gameMode==='2v2'?39:19;
+      camera.position.x=Math.max(-bound,Math.min(bound,camera.position.x));
+      camera.position.z=Math.max(-bound,Math.min(bound,camera.position.z));
+    }
+
+    if(!isPaused){
+      // Update all other players
+      Object.keys(otherPlayers).forEach(slot=>{
+        const p=otherPlayers[slot];if(!p||!p.lastData||!p.group)return;
+        const d=p.lastData;
+        const opY=Math.max(0,(d.y||playerHeight)-playerHeight);
+        const targetPos=new THREE.Vector3(d.x||0,opY,d.z||0);
+        const lerpF=Math.min(1,delta*15);
+        p.group.position.lerp(targetPos,lerpF);
+
+        const targetRY=d.ry||0;
+        let curRY=p.group.rotation.y,diff=targetRY-curRY;
+        while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
+        p.group.rotation.y=curRY+diff*lerpF;
+
+        p.group.updateWorldMatrix(true,true);
+        p.group.traverse(ch=>{if(ch.isMesh)ch.updateMatrixWorld(true)});
+
+        // Hide dead players (health 0)
+        const hp=d.health;
+        p.group.visible=(hp===undefined||hp===null||hp>0);
+
+        // Name tag
+        if(p.nameDiv&&p.headMesh){
+          const headW=new THREE.Vector3();p.headMesh.getWorldPosition(headW);headW.y+=.4;
+          const sp=headW.clone().project(camera);
+          const sx=(sp.x*.5+.5)*window.innerWidth,sy=(-sp.y*.5+.5)*window.innerHeight;
+          if(sp.z<1&&sp.z>-0.1&&p.group.visible){
+            p.nameDiv.style.display='block';p.nameDiv.style.left=sx+'px';p.nameDiv.style.top=(sy-20)+'px';p.nameDiv.style.transform='translateX(-50%)';
+          }else{p.nameDiv.style.display='none'}
         }
+      });
 
-        function playShootSound() {
-            if(!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-            
-            const weapon = document.getElementById('weapon-container');
-            const flash = document.getElementById('muzzle-flash');
-            weapon.classList.add('recoil');
-            flash.classList.add('show');
-            setTimeout(() => {
-                weapon.classList.remove('recoil');
-                flash.classList.remove('show');
-            }, 60);
+      // Tracers
+      for(let i=tracers.length-1;i>=0;i--){
+        const t=tracers[i];t.mesh.position.addScaledVector(t.dir,t.speed*delta);
+        t.life+=delta;t.mesh.material.opacity=Math.max(0,.9-t.life*3);
+        if(t.life>.5){scene.remove(t.mesh);t.mesh.geometry.dispose();t.mesh.material.dispose();tracers.splice(i,1)}
+      }
+
+      // Send position
+      sendTimer+=delta;
+      if(sendTimer>.05&&matchRef){
+        sendTimer=0;
+        matchRef.child(mySlot).update({
+          x:parseFloat(camera.position.x.toFixed(2)),
+          y:parseFloat(camera.position.y.toFixed(2)),
+          z:parseFloat(camera.position.z.toFixed(2)),
+          ry:parseFloat(euler.y.toFixed(3))
+        });
+      }
+    }
+
+    // Minimap + teammate HUD (2v2)
+    if(gameMode==='2v2'&&!isPaused){
+      // Minimap
+      const mc=document.getElementById('minimap-canvas');
+      const mx=mc.getContext('2d');
+      const mw=140,mh=140,arenaR=40;
+      mx.clearRect(0,0,mw,mh);
+      mx.fillStyle='rgba(20,20,40,0.8)';mx.fillRect(0,0,mw,mh);
+      // Arena border
+      mx.strokeStyle='rgba(255,255,255,0.2)';mx.strokeRect(2,2,mw-4,mh-4);
+      // Map player dot
+      const mapX=x=>(x/arenaR*0.5+0.5)*mw;
+      const mapZ=z=>(z/arenaR*0.5+0.5)*mh;
+      // Me (white dot)
+      mx.fillStyle='#ffffff';mx.beginPath();mx.arc(mapX(camera.position.x),mapZ(camera.position.z),4,0,Math.PI*2);mx.fill();
+      // Direction indicator
+      const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);
+      mx.strokeStyle='#ffffff';mx.lineWidth=1.5;mx.beginPath();
+      mx.moveTo(mapX(camera.position.x),mapZ(camera.position.z));
+      mx.lineTo(mapX(camera.position.x+fwd.x*5),mapZ(camera.position.z+fwd.z*5));mx.stroke();
+      // Other players
+      Object.keys(otherPlayers).forEach(slot=>{
+        const p=otherPlayers[slot];if(!p||!p.lastData)return;
+        const px=mapX(p.lastData.x||0),pz=mapZ(p.lastData.z||0);
+        const alive=p.lastData.health>0;
+        if(p.isEnemy){
+          // Only show enemies on minimap if close (within 15 units)
+          const dist=Math.sqrt(Math.pow((p.lastData.x||0)-camera.position.x,2)+Math.pow((p.lastData.z||0)-camera.position.z,2));
+          if(dist<20&&alive){mx.fillStyle='#ff4444';mx.beginPath();mx.arc(px,pz,3,0,Math.PI*2);mx.fill()}
+        }else{
+          // Allies always visible
+          mx.fillStyle=alive?'#4488ff':'#333355';mx.beginPath();mx.arc(px,pz,3,0,Math.PI*2);mx.fill();
         }
+      });
+      // Spawn zone markers
+      mx.fillStyle='rgba(68,136,255,0.15)';mx.fillRect(mapX(-39),mapZ(-9),mapX(-33)-mapX(-39),mapZ(9)-mapZ(-9));
+      mx.fillStyle='rgba(255,68,68,0.15)';mx.fillRect(mapX(33),mapZ(-9),mapX(39)-mapX(33),mapZ(9)-mapZ(-9));
 
-        function playHitSound() {
-            if(!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+      // Teammate health bars
+      allySlots.forEach(slot=>{
+        const p=otherPlayers[slot];if(!p||!p.lastData)return;
+        const hp=Math.max(0,p.lastData.health||0);
+        const fill=document.getElementById('tm-hp-'+slot);
+        const txt=document.getElementById('tm-txt-'+slot);
+        if(fill)fill.style.width=hp+'%';
+        if(txt)txt.textContent=hp;
+        if(fill){
+          if(hp>60)fill.style.background='#4488ff';
+          else if(hp>30)fill.style.background='#ffaa00';
+          else fill.style.background='#ff4444';
         }
-
-        let camera, scene, renderer, controls, raycaster;
-        const objects = []; 
-        const targets = []; 
-
-        let totalMoney = localStorage.getItem('eggappsMoney') ? parseInt(localStorage.getItem('eggappsMoney')) : 0;
-        let totalReserveAmmo = localStorage.getItem('eggappsAmmo') ? parseInt(localStorage.getItem('eggappsAmmo')) : 500;
-        let easyHitCount = localStorage.getItem('eggappsEasyHits') ? parseInt(localStorage.getItem('eggappsEasyHits')) : 0;
-        let mediumHitCount = localStorage.getItem('eggappsMediumHits') ? parseInt(localStorage.getItem('eggappsMediumHits')) : 0;
-        let savedSensitivity = localStorage.getItem('eggappsSensitivity') ? parseFloat(localStorage.getItem('eggappsSensitivity')) : 1.0;
-        let currentAmmo = localStorage.getItem('eggappsCurrentAmmo') !== null ? parseInt(localStorage.getItem('eggappsCurrentAmmo')) : 30;
-        const maxAmmo = 30;
-
-        function saveData() {
-            localStorage.setItem('eggappsMoney', totalMoney);
-            localStorage.setItem('eggappsAmmo', totalReserveAmmo);
-            localStorage.setItem('eggappsEasyHits', easyHitCount);
-            localStorage.setItem('eggappsMediumHits', mediumHitCount);
-            localStorage.setItem('eggappsSensitivity', savedSensitivity);
-            localStorage.setItem('eggappsCurrentAmmo', currentAmmo); 
-            updateAllUI();
-        }
-
-        let gameStatus = 'menu'; 
-        let selectedDifficulty = 'orta';
-        let selectedDuration = 0;
-        let timeRemaining = 0;
-        let timerInterval;
-        
-        let score = 0;
-        let isReloading = false;
-        
-        let totalShotsFired = 0;
-        let totalHits = 0;
-        let baseEarnedMoneyThisMatch = 0; 
-        
-        let isShooting = false;
-        let lastShotTime = 0;
-        const fireRateMs = 120; 
-
-        let lastSpawnTime = 0;
-
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        let canJump = false, isCrouching = false;
-        let prevTime = performance.now();
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
-        let speed = 400.0;
-        const defaultSpeed = 400.0, crouchSpeed = 200.0;
-        const playerHeight = 10, crouchHeight = 5, playerRadius = 4;
-
-        init();
-        animate();
-
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a1a);
-            scene.fog = new THREE.Fog(0x1a1a1a, 0, 750);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.y = playerHeight;
-
-            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
-            light.position.set(0.5, 1, 0.75);
-            scene.add(light);
-
-            controls = new PointerLockControls(camera, document.body);
-            controls.pointerSpeed = savedSensitivity; 
-            raycaster = new THREE.Raycaster(); 
-
-            setupUIEvents();
-            updateAllUI(); 
-
-            scene.add(controls.getObject());
-
-            document.addEventListener('mousedown', (event) => {
-                initAudio(); 
-                if (event.button === 0 && controls.isLocked && gameStatus === 'playing') {
-                    isShooting = true;
-                }
-            });
-
-            document.addEventListener('mouseup', (event) => {
-                if (event.button === 0) {
-                    isShooting = false;
-                }
-            });
-
-            const onKeyDown = function (event) {
-                if(gameStatus !== 'playing') return;
-                switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
-                    case 'Space':
-                        if (canJump === true) velocity.y += 180;
-                        canJump = false;
-                        break;
-                    case 'ControlLeft': case 'ControlRight':
-                        isCrouching = true; speed = crouchSpeed; break;
-                    case 'KeyR':
-                        reloadWeapon(); 
-                        break;
-                }
-            };
-
-            const onKeyUp = function (event) {
-                switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
-                    case 'ControlLeft': case 'ControlRight':
-                        isCrouching = false; speed = defaultSpeed; break;
-                }
-            };
-
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-
-            const floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-            floorGeometry.rotateX(- Math.PI / 2);
-            const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            scene.add(floor);
-
-            const boxGeometry = new THREE.BoxGeometry(20, 20, 20);
-            const boxMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffcc });
-            for (let i = 0; i < 15; i++) {
-                const box = new THREE.Mesh(boxGeometry, boxMaterial);
-                box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
-                box.position.y = 10; 
-                box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
-                if (box.position.distanceTo(new THREE.Vector3(0, 10, 0)) > 40) {
-                    scene.add(box);
-                    objects.push(box);
-                }
-            }
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('game-container').appendChild(renderer.domElement);
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        function setupUIEvents() {
-            const mainMenu = document.getElementById('main-menu');
-            const endScreen = document.getElementById('end-screen');
-            const uiLayer = document.getElementById('ui-layer');
-            const shopMenu = document.getElementById('shop-menu');
-            const settingsMenu = document.getElementById('settings-menu');
-
-            document.getElementById('open-shop-btn').addEventListener('click', () => {
-                initAudio();
-                mainMenu.style.display = 'none';
-                shopMenu.style.display = 'flex';
-                updateAllUI();
-            });
-            document.getElementById('close-shop-btn').addEventListener('click', () => {
-                shopMenu.style.display = 'none';
-                mainMenu.style.display = 'flex';
-            });
-            document.querySelectorAll('.buy-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    let cost = parseInt(e.target.getAttribute('data-cost'));
-                    let amount = parseInt(e.target.getAttribute('data-amount'));
-                    if (totalMoney >= cost) {
-                        totalMoney -= cost;
-                        totalReserveAmmo += amount;
-                        saveData();
-                    } else {
-                        alert("Yetersiz Bakiye! Biraz daha antrenman yapıp para kazanmalısın.");
-                    }
-                });
-            });
-
-            const sensSlider = document.getElementById('sens-slider');
-            const sensValueText = document.getElementById('sens-value');
-            
-            sensSlider.value = savedSensitivity;
-            sensValueText.innerText = savedSensitivity.toFixed(1);
-
-            document.getElementById('open-settings-btn').addEventListener('click', () => {
-                initAudio();
-                mainMenu.style.display = 'none';
-                settingsMenu.style.display = 'flex';
-            });
-            
-            document.getElementById('close-settings-btn').addEventListener('click', () => {
-                settingsMenu.style.display = 'none';
-                mainMenu.style.display = 'flex';
-            });
-
-            sensSlider.addEventListener('input', (e) => {
-                savedSensitivity = parseFloat(e.target.value);
-                sensValueText.innerText = savedSensitivity.toFixed(1);
-                controls.pointerSpeed = savedSensitivity;
-                saveData();
-            });
-
-            document.querySelectorAll('.diff-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    selectedDifficulty = e.target.getAttribute('data-diff');
-                });
-            });
-
-            document.querySelectorAll('.time-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    initAudio();
-                    selectedDuration = parseInt(e.target.getAttribute('data-time'));
-                    startGame();
-                });
-            });
-
-            document.getElementById('restart-btn').addEventListener('click', () => {
-                endScreen.style.display = 'none';
-                mainMenu.style.display = 'flex';
-                updateAllUI();
-            });
-
-            controls.addEventListener('lock', () => {
-                if(gameStatus === 'playing') {
-                    mainMenu.style.display = 'none';
-                    endScreen.style.display = 'none';
-                    shopMenu.style.display = 'none';
-                    settingsMenu.style.display = 'none';
-                    uiLayer.style.display = 'block';
-                    lastSpawnTime = performance.now(); 
-                }
-            });
-
-            controls.addEventListener('unlock', () => {
-                if (gameStatus === 'playing') {
-                    endGameEarly();
-                }
-            });
-        }
-
-        function updateAllUI() {
-            document.getElementById('hud-money').innerText = totalMoney;
-            document.getElementById('hud-total-ammo').innerText = totalReserveAmmo;
-            document.getElementById('menu-money').innerText = totalMoney;
-            document.getElementById('menu-total-ammo').innerText = totalReserveAmmo;
-            document.getElementById('shop-money-display').innerText = totalMoney;
-            document.getElementById('ammo-display').innerText = `Şarjör: ${currentAmmo} / ${maxAmmo}`;
-        }
-
-        function startGame() {
-            score = 0;
-            
-            // BUG FIX: Otomatik mermi yüklemeyi kaldırdık. 
-            // Oyuncu kaç mermisi varsa o şekilde başlar. (Eğer bittiyse 'R' tuşuyla manuel doldurmalı)
-            
-            isReloading = false;
-            isShooting = false;
-            totalShotsFired = 0;
-            totalHits = 0;
-            baseEarnedMoneyThisMatch = 0; 
-            timeRemaining = selectedDuration;
-            gameStatus = 'playing';
-
-            targets.forEach(t => scene.remove(t));
-            targets.length = 0;
-
-            updateAllUI();
-            document.getElementById('score-display').innerText = `Puan: 0`;
-            updateTimerUI();
-
-            controls.lock(); 
-
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if(gameStatus === 'playing') {
-                    timeRemaining--;
-                    updateTimerUI();
-                    if(timeRemaining <= 0) finishGame(); 
-                }
-            }, 1000);
-        }
-
-        function updateTimerUI() {
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
-            document.getElementById('timer-display').innerText = `Süre: ${minutes < 10 ? '0':''}${minutes}:${seconds < 10 ? '0':''}${seconds}`;
-        }
-
-        function finishGame() {
-            gameStatus = 'ended';
-            isShooting = false;
-            clearInterval(timerInterval);
-            controls.unlock(); 
-
-            document.getElementById('ui-layer').style.display = 'none';
-            document.getElementById('end-screen').style.display = 'flex';
-
-            const totalTargetsHit = score / 10;
-            const elapsedTime = selectedDuration; 
-            const hitsPerSecond = (totalTargetsHit / elapsedTime).toFixed(1);
-            
-            let accuracy = 0;
-            let accuracyPercent = 0;
-            if (totalShotsFired > 0) {
-                accuracy = totalHits / totalShotsFired; 
-                accuracyPercent = Math.round(accuracy * 100); 
-            }
-
-            let finalEarnedMoney = Math.round(baseEarnedMoneyThisMatch * accuracy);
-            
-            totalMoney += finalEarnedMoney;
-            saveData(); 
-
-            document.getElementById('final-score').innerText = score;
-            document.getElementById('final-avg').innerText = hitsPerSecond;
-            document.getElementById('final-acc').innerText = `%${accuracyPercent}`;
-            document.getElementById('final-base-earned').innerText = baseEarnedMoneyThisMatch;
-            document.getElementById('final-earned').innerText = `$${finalEarnedMoney}`;
-        }
-
-        function endGameEarly() {
-            gameStatus = 'menu';
-            isShooting = false;
-            clearInterval(timerInterval);
-            document.getElementById('ui-layer').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-            saveData(); 
-            updateAllUI();
-        }
-
-        function reloadWeapon() {
-            if (isReloading || currentAmmo === maxAmmo || totalReserveAmmo <= 0) return; 
-            
-            isReloading = true;
-            document.getElementById('ammo-display').innerText = `Yenileniyor...`;
-            
-            setTimeout(() => {
-                let ammoNeeded = maxAmmo - currentAmmo;
-                let ammoToLoad = Math.min(ammoNeeded, totalReserveAmmo); 
-                
-                currentAmmo += ammoToLoad;
-                totalReserveAmmo -= ammoToLoad;
-                
-                isReloading = false;
-                saveData(); 
-            }, 1000); 
-        }
-
-        function performRaycastShoot() {
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(targets);
-
-            if (intersects.length > 0) {
-                playHitSound(); 
-                
-                const hitTarget = intersects[0].object;
-                totalHits++; 
-                score += 10;
-                document.getElementById('score-display').innerText = `Puan: ${score}`;
-                
-                if (selectedDifficulty === 'kolay') {
-                    easyHitCount++;
-                    if (easyHitCount >= 10) {
-                        baseEarnedMoneyThisMatch += 1;
-                        easyHitCount -= 10; 
-                    }
-                } 
-                else if (selectedDifficulty === 'orta') {
-                    mediumHitCount++;
-                    if (mediumHitCount >= 3) {
-                        baseEarnedMoneyThisMatch += 1;
-                        mediumHitCount -= 3; 
-                    }
-                } 
-                else if (selectedDifficulty === 'zor') {
-                    baseEarnedMoneyThisMatch += 2;
-                }
-                
-                scene.remove(hitTarget);
-                const index = targets.indexOf(hitTarget);
-                if (index > -1) {
-                    targets.splice(index, 1);
-                }
-            }
-        }
-
-        function createTargetTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const maxRadius = Math.min(centerX, centerY);
-            const colors = ['#ff0000', '#ffffff', '#ff0000', '#ffffff', '#ff0000'];
-            const radii = [1.0, 0.8, 0.6, 0.4, 0.2];
-            for (let i = 0; i < colors.length; i++) {
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, maxRadius * radii[i], 0, 2 * Math.PI);
-                ctx.fillStyle = colors[i];
-                ctx.fill();
-            }
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        const targetTexture = createTargetTexture();
-
-        function spawnTarget() {
-            const geometry = new THREE.CircleGeometry(5, 32); 
-            const material = new THREE.MeshBasicMaterial({ map: targetTexture, side: THREE.DoubleSide });
-            const target = new THREE.Mesh(geometry, material);
-
-            target.position.x = (Math.random() - 0.5) * 150; 
-            target.position.y = Math.random() * 25 + 10;
-            target.position.z = (Math.random() - 0.5) * 150;
-            
-            let speedMult = 1;
-            if (selectedDifficulty === 'kolay') speedMult = 0.5;
-            if (selectedDifficulty === 'orta') speedMult = 1.2;
-            if (selectedDifficulty === 'zor') speedMult = 5.0; 
-
-            target.userData.velocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 30 * speedMult, 
-                (Math.random() - 0.5) * 15 * speedMult, 
-                (Math.random() - 0.5) * 30 * speedMult  
-            );
-
-            scene.add(target);
-            targets.push(target);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function checkCollision() {
-            const playerBox = new THREE.Box3();
-            const currentHeight = isCrouching ? crouchHeight : playerHeight;
-            const center = new THREE.Vector3(camera.position.x, currentHeight / 2, camera.position.z);
-            const size = new THREE.Vector3(playerRadius * 2, currentHeight, playerRadius * 2);
-            playerBox.setFromCenterAndSize(center, size);
-
-            for (let i = 0; i < objects.length; i++) {
-                const objectBox = new THREE.Box3().setFromObject(objects[i]);
-                if (playerBox.intersectsBox(objectBox)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const time = performance.now();
-
-            if (controls.isLocked === true && gameStatus === 'playing') {
-                const delta = (time - prevTime) / 1000;
-
-                if (isShooting && !isReloading && (time - lastShotTime > fireRateMs)) {
-                    if (currentAmmo > 0) {
-                        currentAmmo--;
-                        totalShotsFired++; 
-                        updateAllUI(); 
-                        playShootSound(); 
-                        performRaycastShoot(); 
-                        lastShotTime = time;
-                    }
-                }
-
-                if (time - lastSpawnTime > 1000) {
-                    spawnTarget();
-                    lastSpawnTime = time;
-                }
-
-                for (let i = 0; i < targets.length; i++) {
-                    const target = targets[i];
-                    target.position.add(target.userData.velocity.clone().multiplyScalar(delta));
-                    
-                    if (Math.abs(target.position.x) > 100 || Math.abs(target.position.z) > 100) {
-                        target.userData.velocity.x *= -1;
-                        target.userData.velocity.z *= -1;
-                    }
-                    if (target.position.y < 6) { 
-                        target.position.y = 6; target.userData.velocity.y *= -1; 
-                    } else if (target.position.y > 50) {
-                        target.position.y = 50; target.userData.velocity.y *= -1; 
-                    }
-                    target.lookAt(camera.position);
-                }
-
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 9.8 * 40.0 * delta; 
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
-
-                if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
-
-                const oldPosition = camera.position.clone();
-
-                controls.moveRight(-velocity.x * delta);
-                if (checkCollision()) { camera.position.x = oldPosition.x; velocity.x = 0; }
-
-                controls.moveForward(-velocity.z * delta);
-                if (checkCollision()) { camera.position.z = oldPosition.z; velocity.z = 0; }
-
-                camera.position.y += velocity.y * delta;
-                const targetHeight = isCrouching ? crouchHeight : playerHeight;
-                
-                if (camera.position.y < targetHeight) {
-                    velocity.y = 0;
-                    camera.position.y = targetHeight;
-                    canJump = true;
-                }
-            }
-
-            prevTime = time;
-            renderer.render(scene, camera);
-        }
-    </script>
+      });
+    }
+
+    renderer.render(scene,camera);
+  }
+  animate();
+}
+
+// ====================== CLEANUP ======================
+window.addEventListener('beforeunload',()=>{
+  if(matchRef)matchRef.child('status').set('ended');
+  if(myNickname)db.ref('players/'+myNickname.toLowerCase()).update({online:false});
+  if(matchId){db.ref('matchmaking/'+matchId).remove();db.ref('matchmaking2v2/'+matchId).remove()}
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+</script>
 </body>
 </html>
